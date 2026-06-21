@@ -1,0 +1,156 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>CAUTI Care Bundle Dashboard</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <!-- Tailwind CSS from CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Chart.js for charts -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <!-- Chart.js DataLabels Plugin (optional) -->
+  <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2"></script>
+  <!-- Google Fonts (Prompt, Sarabun) -->
+  <link href="https://fonts.googleapis.com/css2?family=Prompt&family=Sarabun:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    body { font-family: 'Prompt', 'Sarabun', sans-serif; }
+  </style>
+</head>
+<body class="bg-gray-50 min-h-screen flex flex-col">
+  <!-- Header -->
+  <header class="bg-gradient-to-r from-pink-600 to-rose-600 text-white shadow sticky top-0 z-40">
+    <div class="max-w-6xl mx-auto px-4 py-3 flex justify-between items-center">
+      <h1 class="text-2xl font-bold">CAUTI Care Bundle Dashboard</h1>
+      <p class="text-sm">Public Hospital, Surat Thani</p>
+    </div>
+  </header>
+
+  <!-- Navigation Tabs -->
+  <nav class="bg-white shadow">
+    <div class="max-w-6xl mx-auto px-4 py-2 flex space-x-4">
+      <button id="btn-form" class="tab-btn border-b-2 border-transparent px-3 py-2 font-medium" onclick="switchTab('form')">Submit</button>
+      <button id="btn-history" class="tab-btn border-b-2 border-transparent px-3 py-2 font-medium text-gray-500" onclick="switchTab('history')">History</button>
+      <button id="btn-reports" class="tab-btn border-b-2 border-transparent px-3 py-2 font-medium text-gray-500" onclick="switchTab('reports')">Dashboard</button>
+    </div>
+  </nav>
+
+  <!-- Content Sections -->
+  <main class="flex-1 max-w-6xl mx-auto p-4 space-y-6">
+    <!-- Form Section -->
+    <section id="tab-form-content" class="tab-content">
+      <!-- [Form HTML for data entry here] -->
+      <!-- (This remains same as original code) -->
+    </section>
+
+    <!-- History Section -->
+    <section id="tab-history-content" class="tab-content hidden">
+      <!-- [History Table HTML here] -->
+      <!-- (Original code's history table) -->
+    </section>
+
+    <!-- Reports (Dashboard) Section -->
+    <section id="tab-reports-content" class="tab-content hidden">
+      <!-- [Dashboard charts here] -->
+      <!-- (Original code's canvas elements for charts) -->
+    </section>
+  </main>
+
+  <!-- Modal (Notification/Confirm) -->
+  <div id="customModal" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center">
+    <div id="modalCard" class="bg-white p-4 rounded-lg max-w-sm w-full">
+      <h3 id="modalTitle" class="text-lg font-semibold mb-2"></h3>
+      <p id="modalMessage" class="mb-4"></p>
+      <button id="confirmProceedBtn" class="bg-blue-600 text-white px-4 py-2 rounded">OK</button>
+    </div>
+  </div>
+
+  <!-- Client-side Script -->
+  <script>
+  // CONFIGURATION (update these)
+  const config = {
+    // URL of the deployed Google Apps Script web app (replace with yours)
+    apiUrl: '', // e.g. "https://script.google.com/macros/s/AKfycbxxxxxx/exec"
+    // Auto-refresh interval in milliseconds:
+    refreshInterval: 30000, // 30000 = 30 seconds (adjust as needed)
+    // Query parameter name for cache-busting (timestamp)
+    cacheBustParam: 't'
+  };
+
+  // Global database object
+  const db = {
+    apiUrl: config.apiUrl,
+    records: [],           // All records loaded from sheet
+    unsynced: [],         // Local unsynced changes (if any)
+    // ...
+  };
+
+  // Fetch data from Google Sheet via Apps Script
+  async function fetchDataFromSheet() {
+    if (!db.apiUrl) {
+      console.warn("API URL not set.");
+      return;
+    }
+    try {
+      // Append timestamp to avoid caching
+      const url = db.apiUrl + "?action=fetch&" + config.cacheBustParam + "=" + Date.now();
+      const response = await fetch(url, { method: 'GET', cache: 'no-store' });
+      const data = await response.json();
+      if (Array.isArray(data)) {
+        db.records = data;  // Google Sheet is master
+        localStorage.setItem('cauti_records', JSON.stringify(db.records));
+        renderHistory();
+        renderReports();
+        console.log("Fetched " + data.length + " records from Google Sheet.");
+      } else {
+        console.error("Unexpected data format:", data);
+      }
+    } catch (error) {
+      console.error("Fetch error:", error);
+    }
+  }
+
+  // Render functions (assume defined elsewhere or inline as needed)
+  function renderHistory() {
+    // (Populate history table using db.records)
+  }
+  function renderReports() {
+    // (Generate charts using Chart.js and db.records)
+  }
+
+  // Switch between tabs
+  function switchTab(tabName) {
+    document.querySelectorAll('.tab-btn').forEach(btn => {
+      btn.classList.remove('border-pink-600', 'text-pink-600', 'font-semibold');
+      btn.classList.add('border-transparent', 'text-gray-500');
+    });
+    document.querySelectorAll('.tab-content').forEach(sec => sec.classList.add('hidden'));
+    // Highlight active tab
+    document.getElementById('btn-' + tabName).classList.add('border-pink-600', 'text-pink-600', 'font-semibold');
+    document.getElementById('btn-' + tabName).classList.remove('border-transparent', 'text-gray-500');
+    // Show content
+    document.getElementById(`tab-${tabName}-content`).classList.remove('hidden');
+
+    // Always fetch latest data on tab change for dynamic tabs
+    if (tabName === 'history' || tabName === 'reports') {
+      // Delay rendering briefly to ensure fetch completes
+      fetchDataFromSheet().then(() => {
+        if (tabName === 'history') renderHistory();
+        if (tabName === 'reports') renderReports();
+      });
+    }
+  }
+
+  // Auto-refresh at specified interval
+  window.addEventListener('load', () => {
+    // Initialize date inputs, event handlers, etc.
+    // ...
+    // First load of data
+    fetchDataFromSheet();
+    // Set up periodic fetch
+    setInterval(fetchDataFromSheet, config.refreshInterval);
+  });
+
+  // (Any other existing JS code from original index.html can follow)
+  </script>
+</body>
+</html>

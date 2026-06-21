@@ -1,1637 +1,1156 @@
-<!DOCTYPE html>
+!DOCTYPE html>
 <html lang="th">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>CAUTI Care Bundle - พุนพิน</title>
-  <!-- Tailwind CSS -->
+  <title>CAUTI Care Bundle Checklist - พุนพิน</title>
+  <!-- Tailwind CSS & FontAwesome Icons -->
   <script src="https://cdn.tailwindcss.com"></script>
-  <!-- Chart.js CDN for Interactive Dashboard -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <!-- Chart.js for beautiful charts -->
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-  <!-- Chart.js DataLabels Plugin to display percentages inside/on bars directly -->
-  <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2"></script>
-  <!-- Google Fonts Prompt & Sarabun -->
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Prompt:wght@300;400;500;600;700&family=Sarabun:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <!-- Google Fonts: Sarabun -->
+  <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+  
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['Sarabun', 'sans-serif'],
+          },
+          colors: {
+            hospital: {
+              50: '#f0fdfa',
+              100: '#ccfbf1',
+              200: '#99f6e4',
+              500: '#14b8a6',
+              600: '#0d9488',
+              700: '#0f766e',
+              900: '#115e59',
+            },
+            accent: {
+              purple: '#8b5cf6',
+              pink: '#ec4899',
+            }
+          }
+        }
+      }
+    }
+  </script>
   <style>
-    body {
-      font-family: 'Prompt', 'Sarabun', sans-serif;
+    .custom-scroll::-webkit-scrollbar {
+      width: 6px;
+    }
+    .custom-scroll::-webkit-scrollbar-track {
+      background: rgba(241, 245, 249, 0.5);
+      border-radius: 8px;
+    }
+    .custom-scroll::-webkit-scrollbar-thumb {
+      background: #cbd5e1;
+      border-radius: 8px;
+    }
+    .custom-scroll::-webkit-scrollbar-thumb:hover {
+      background: #94a3b8;
+    }
+    /* สไตล์ไอคอนเครื่องหมายถูกและผิดให้เปลี่ยนเป็นสีขาวเมื่อปุ่มถูก Active */
+    .peer:checked + div i {
+      color: white !important;
+    }
+    /* คลาสสำหรับการกระพริบขณะโหลดข้อมูล */
+    .skeleton-loader {
+      animation: pulse 1.8s infinite ease-in-out;
+    }
+    @keyframes pulse {
+      0%, 100% { opacity: 0.6; }
+      50% { opacity: 1; }
     }
   </style>
 </head>
-<body class="bg-slate-50 text-slate-800 min-h-screen flex flex-col">
+<body class="bg-gradient-to-tr from-slate-50 via-teal-50 to-indigo-50 min-h-screen text-slate-800">
 
-  <!-- TOP HEADER (Vibrant Pink & Rose Gradient) -->
-  <header class="bg-gradient-to-r from-pink-600 to-rose-600 text-white shadow-lg sticky top-0 z-40">
-    <div class="max-w-6xl mx-auto px-4 py-3 flex justify-between items-center">
-      <div class="flex items-center space-x-3">
-        <!-- Medical Shield Icon -->
-        <svg class="w-8 h-8 text-pink-100" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"></path>
-        </svg>
-        <div>
-          <h1 class="text-lg md:text-xl font-bold tracking-wide">CAUTI Care Bundle</h1>
-          <p class="text-xs text-pink-100 font-light">รพ.พุนพิน สุราษฎร์ธานี</p>
-        </div>
-      </div>
-      <!-- API Connection Status Badge -->
-      <div id="connectionBadge" class="flex items-center space-x-1 px-3 py-1 bg-pink-850 bg-opacity-40 rounded-full text-xs text-pink-100 border border-pink-400/20">
-        <span class="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-pulse"></span>
-        <span class="hidden md:inline font-medium">เชื่อมต่อระบบ</span>
-      </div>
+  <!-- หน้าจอจำลองสปินเนอร์ตอนกำลังบันทึก/ดึงข้อมูล (Loading Overlay) -->
+  <div id="loadingOverlay" class="fixed inset-0 flex flex-col items-center justify-center z-50 bg-slate-900/40 backdrop-blur-md hidden transition-all duration-300">
+    <div class="bg-white p-6 rounded-3xl shadow-2xl flex flex-col items-center max-w-xs w-full mx-4">
+      <div class="w-16 h-16 border-4 border-teal-500 border-t-transparent rounded-full animate-spin mb-4"></div>
+      <p id="loadingText" class="text-slate-700 font-bold text-center">กำลังเชื่อมต่อฐานข้อมูล...</p>
+      <p class="text-xs text-slate-400 text-center mt-1">กรุณาอย่าเพิ่งปิดหน้าต่างนี้</p>
     </div>
-  </header>
-
-  <!-- NAVIGATION TABS -->
-  <nav class="bg-white border-b border-slate-200 sticky top-[60px] z-30 shadow-sm">
-    <div class="max-w-6xl mx-auto px-4 flex justify-around">
-      <button onclick="switchTab('form')" id="btn-form" class="tab-btn py-3 px-1 md:px-4 border-b-2 border-pink-600 text-pink-600 font-semibold flex items-center space-x-1.5 focus:outline-none text-sm transition-all">
-        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01"></path></svg>
-        <span>แบบประเมิน</span>
-      </button>
-      <button onclick="switchTab('history')" id="btn-history" class="tab-btn py-3 px-1 md:px-4 border-b-2 border-transparent text-slate-500 font-medium flex items-center space-x-1.5 focus:outline-none text-sm transition-all relative">
-        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"></path></svg>
-        <span>ประวัติ & การซิงค์</span>
-        <span id="unsyncedCountBadge" class="hidden absolute top-1.5 -right-2 bg-pink-500 text-white text-[10px] w-5 h-5 rounded-full flex items-center justify-center font-bold">0</span>
-      </button>
-      <button onclick="switchTab('reports')" id="btn-reports" class="tab-btn py-3 px-1 md:px-4 border-b-2 border-transparent text-slate-500 font-medium flex items-center space-x-1.5 focus:outline-none text-sm transition-all">
-        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 002 2h2a2 2 0 002-2z"></path></svg>
-        <span>สถิติ & สรุปผล</span>
-      </button>
-      <button onclick="switchTab('settings')" id="btn-settings" class="tab-btn py-3 px-1 md:px-4 border-b-2 border-transparent text-slate-500 font-medium flex items-center space-x-1.5 focus:outline-none text-sm transition-all">
-        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path></svg>
-        <span>ตั้งค่าระบบ</span>
-      </button>
-    </div>
-  </nav>
-
-  <!-- MAIN CONTAINER -->
-  <main class="flex-grow max-w-6xl w-full mx-auto p-4 md:py-6">
-
-    <!-- TAB 1: FORM VIEW -->
-    <div id="tab-form-content" class="tab-content space-y-6">
-      
-      <!-- Patient & Meta Data Card -->
-      <div class="bg-white rounded-2xl p-5 shadow-sm border border-slate-200">
-        <div class="flex items-center space-x-2 pb-4 mb-4 border-b border-slate-100">
-          <h2 class="font-semibold text-slate-800 text-lg">ข้อมูลการประเมิน</h2>
-        </div>
-
-        <form id="metaForm" class="max-w-md">
-          <div>
-            <label class="block text-sm font-semibold text-slate-600 mb-1.5">วันที่ประเมิน</label>
-            <input type="date" id="evalDate" required class="w-full px-4 py-2.5 border border-slate-200 rounded-xl focus:ring-2 focus:ring-pink-500 focus:border-pink-500 outline-none transition-all text-slate-700 font-medium">
-          </div>
-        </form>
-      </div>
-
-      <!-- Checklist Section Header (Pink Soft Accent) -->
-      <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 bg-pink-50 border border-pink-100 p-4 rounded-xl">
-        <div>
-          <h2 class="font-bold text-pink-900 text-lg">เกณฑ์การประเมิน CAUTI Care Bundle</h2>
-          <p class="text-xs text-pink-700 font-light">กรุณาประเมินการปฏิบัติงานจริงในหอผู้ป่วยตามข้อกำหนดทั้ง 8 ข้อ</p>
-        </div>
-        <!-- Live Score Widget (Pink Style) -->
-        <div class="bg-pink-600 text-white rounded-2xl px-5 py-3 shadow-md flex items-center space-x-3 w-full md:w-auto justify-center">
-          <div class="text-right">
-            <span class="text-[10px] block text-pink-100 uppercase font-bold tracking-wider">Bundle Compliance</span>
-            <span class="text-2xl font-black" id="liveScoreText">0%</span>
-          </div>
-          <div class="w-10 h-10 rounded-full border-2 border-pink-400 flex items-center justify-center font-bold text-sm" id="scoreIndicatorRing">
-            0/8
-          </div>
-        </div>
-      </div>
-
-      <!-- Checklist Items -->
-      <div class="space-y-4" id="bundleForm">
-        
-        <!-- Item 1 -->
-        <div class="bg-white rounded-2xl p-5 shadow-sm border border-slate-200 hover:border-pink-200 transition-all card-bundle-item" data-index="1">
-          <div class="flex flex-col md:flex-row md:items-center justify-between gap-4">
-            <div class="space-y-1">
-              <div class="flex items-center space-x-2">
-                <span class="inline-flex items-center justify-center w-7 h-7 rounded-full bg-pink-100 text-pink-700 font-bold text-sm">1</span>
-                <h3 class="font-bold text-slate-800 text-base md:text-md">ประเมินความจำเป็นในการใส่สายสวนปัสสาวะ (เวรเช้าทำ)</h3>
-              </div>
-                         </div>
-            <div class="flex items-center space-x-3 pl-9 md:pl-0">
-              <button onclick="setItemValue(1, 'ปฏิบัติ')" class="btn-check-yes w-24 py-2 rounded-xl border border-slate-200 hover:border-pink-500 font-semibold text-slate-500 hover:bg-slate-50 transition-all text-sm flex items-center justify-center space-x-1">
-                <span class="icon-dot w-2 h-2 rounded-full bg-slate-300"></span>
-                <span>ปฏิบัติ</span>
-              </button>
-              <button onclick="setItemValue(1, 'ไม่ปฏิบัติ')" class="btn-check-no w-28 py-2 rounded-xl border border-slate-200 hover:border-rose-500 font-semibold text-slate-500 hover:bg-slate-50 transition-all text-sm flex items-center justify-center space-x-1">
-                <span class="icon-dot w-2 h-2 rounded-full bg-slate-300"></span>
-                <span>ไม่ปฏิบัติ</span>
-              </button>
-            </div>
-          </div>
-        </div>
-
-        <!-- Item 2 -->
-        <div class="bg-white rounded-2xl p-5 shadow-sm border border-slate-200 hover:border-pink-200 transition-all card-bundle-item" data-index="2">
-          <div class="flex flex-col md:flex-row md:items-center justify-between gap-4">
-            <div class="space-y-1">
-              <div class="flex items-center space-x-2">
-                <span class="inline-flex items-center justify-center w-7 h-7 rounded-full bg-pink-100 text-pink-700 font-bold text-sm">2</span>
-                <h3 class="font-bold text-slate-800 text-base md:text-md">ใช้ hand hygiene เมื่อสัมผัสสายสวนปัสสาวะ</h3>
-              </div>
-                        </div>
-            <div class="flex items-center space-x-3 pl-9 md:pl-0">
-              <button onclick="setItemValue(2, 'ปฏิบัติ')" class="btn-check-yes w-24 py-2 rounded-xl border border-slate-200 hover:border-pink-500 font-semibold text-slate-500 hover:bg-slate-50 transition-all text-sm flex items-center justify-center space-x-1">
-                <span class="icon-dot w-2 h-2 rounded-full bg-slate-300"></span>
-                <span>ปฏิบัติ</span>
-              </button>
-              <button onclick="setItemValue(2, 'ไม่ปฏิบัติ')" class="btn-check-no w-28 py-2 rounded-xl border border-slate-200 hover:border-rose-500 font-semibold text-slate-500 hover:bg-slate-50 transition-all text-sm flex items-center justify-center space-x-1">
-                <span class="icon-dot w-2 h-2 rounded-full bg-slate-300"></span>
-                <span>ไม่ปฏิบัติ</span>
-              </button>
-            </div>
-          </div>
-        </div>
-
-        <!-- Item 3 -->
-        <div class="bg-white rounded-2xl p-5 shadow-sm border border-slate-200 hover:border-pink-200 transition-all card-bundle-item" data-index="3">
-          <div class="flex flex-col md:flex-row md:items-center justify-between gap-4">
-            <div class="space-y-1">
-              <div class="flex items-center space-x-2">
-                <span class="inline-flex items-center justify-center w-7 h-7 rounded-full bg-pink-100 text-pink-700 font-bold text-sm">3</span>
-                <h3 class="font-bold text-slate-800 text-base md:text-md">ให้ระบบปัสสาวะเป็น Close system ตลอดเวลา</h3>
-              </div>
-             
-            </div>
-            <div class="flex items-center space-x-3 pl-9 md:pl-0">
-              <button onclick="setItemValue(3, 'ปฏิบัติ')" class="btn-check-yes w-24 py-2 rounded-xl border border-slate-200 hover:border-pink-500 font-semibold text-slate-500 hover:bg-slate-50 transition-all text-sm flex items-center justify-center space-x-1">
-                <span class="icon-dot w-2 h-2 rounded-full bg-slate-300"></span>
-                <span>ปฏิบัติ</span>
-              </button>
-              <button onclick="setItemValue(3, 'ไม่ปฏิบัติ')" class="btn-check-no w-28 py-2 rounded-xl border border-slate-200 hover:border-rose-500 font-semibold text-slate-500 hover:bg-slate-50 transition-all text-sm flex items-center justify-center space-x-1">
-                <span class="icon-dot w-2 h-2 rounded-full bg-slate-300"></span>
-                <span>ไม่ปฏิบัติ</span>
-              </button>
-            </div>
-          </div>
-        </div>
-
-        <!-- Item 4 -->
-        <div class="bg-white rounded-2xl p-5 shadow-sm border border-slate-200 hover:border-pink-200 transition-all card-bundle-item" data-index="4">
-          <div class="flex flex-col md:flex-row md:items-center justify-between gap-4">
-            <div class="space-y-1">
-              <div class="flex items-center space-x-2">
-                <span class="inline-flex items-center justify-center w-7 h-7 rounded-full bg-pink-100 text-pink-700 font-bold text-sm">4</span>
-                <h3 class="font-bold text-slate-800 text-base md:text-md">ให้สายสวนปัสสาวะอยู่ในตำแหน่งที่เหมาะสมเพื่อให้ปัสสาวะไหลได้สะดวกตลอดเวลา ไม่มีการอุดตัน สายไม่งอพับ</h3>
-              </div>
-            
-            </div>
-            <div class="flex items-center space-x-3 pl-9 md:pl-0">
-              <button onclick="setItemValue(4, 'ปฏิบัติ')" class="btn-check-yes w-24 py-2 rounded-xl border border-slate-200 hover:border-pink-500 font-semibold text-slate-500 hover:bg-slate-50 transition-all text-sm flex items-center justify-center space-x-1">
-                <span class="icon-dot w-2 h-2 rounded-full bg-slate-300"></span>
-                <span>ปฏิบัติ</span>
-              </button>
-              <button onclick="setItemValue(4, 'ไม่ปฏิบัติ')" class="btn-check-no w-28 py-2 rounded-xl border border-slate-200 hover:border-rose-500 font-semibold text-slate-500 hover:bg-slate-50 transition-all text-sm flex items-center justify-center space-x-1">
-                <span class="icon-dot w-2 h-2 rounded-full bg-slate-300"></span>
-                <span>ไม่ปฏิบัติ</span>
-              </button>
-            </div>
-          </div>
-        </div>
-
-        <!-- Item 5 -->
-        <div class="bg-white rounded-2xl p-5 shadow-sm border border-slate-200 hover:border-pink-200 transition-all card-bundle-item" data-index="5">
-          <div class="flex flex-col md:flex-row md:items-center justify-between gap-4">
-            <div class="space-y-1">
-              <div class="flex items-center space-x-2">
-                <span class="inline-flex items-center justify-center w-7 h-7 rounded-full bg-pink-100 text-pink-700 font-bold text-sm">5</span>
-                <h3 class="font-bold text-slate-800 text-base md:text-md">จัดวางตำแหน่งของถุงเก็บปัสสาวะแขวนไว้ ต่ำกว่าระดับกระเพาะปัสสาวะ โดยไม่สัมผัสพื้น</h3>
-              </div>
-             
-            </div>
-            <div class="flex items-center space-x-3 pl-9 md:pl-0">
-              <button onclick="setItemValue(5, 'ปฏิบัติ')" class="btn-check-yes w-24 py-2 rounded-xl border border-slate-200 hover:border-pink-500 font-semibold text-slate-500 hover:bg-slate-50 transition-all text-sm flex items-center justify-center space-x-1">
-                <span class="icon-dot w-2 h-2 rounded-full bg-slate-300"></span>
-                <span>ปฏิบัติ</span>
-              </button>
-              <button onclick="setItemValue(5, 'ไม่ปฏิบัติ')" class="btn-check-no w-28 py-2 rounded-xl border border-slate-200 hover:border-rose-500 font-semibold text-slate-500 hover:bg-slate-50 transition-all text-sm flex items-center justify-center space-x-1">
-                <span class="icon-dot w-2 h-2 rounded-full bg-slate-300"></span>
-                <span>ไม่ปฏิบัติ</span>
-              </button>
-            </div>
-          </div>
-        </div>
-
-        <!-- Item 6 -->
-        <div class="bg-white rounded-2xl p-5 shadow-sm border border-slate-200 hover:border-pink-200 transition-all card-bundle-item" data-index="6">
-          <div class="flex flex-col md:flex-row md:items-center justify-between gap-4">
-            <div class="space-y-1">
-              <div class="flex items-center space-x-2">
-                <span class="inline-flex items-center justify-center w-7 h-7 rounded-full bg-pink-100 text-pink-700 font-bold text-sm">6</span>
-                <h3 class="font-bold text-slate-800 text-base md:text-md">ไม่เปลี่ยนสายสวนปัสสาวะเป็น Routine เปลี่ยนเมื่อมีการรั่วซึมหรืออุดตัน โดยต้องทำ การเปลี่ยนทั้งชุดสวนปัสสาวะ</h3>
-              </div>
-           
-            </div>
-            <div class="flex items-center space-x-3 pl-9 md:pl-0">
-              <button onclick="setItemValue(6, 'ปฏิบัติ')" class="btn-check-yes w-24 py-2 rounded-xl border border-slate-200 hover:border-pink-500 font-semibold text-slate-500 hover:bg-slate-50 transition-all text-sm flex items-center justify-center space-x-1">
-                <span class="icon-dot w-2 h-2 rounded-full bg-slate-300"></span>
-                <span>ปฏิบัติ</span>
-              </button>
-              <button onclick="setItemValue(6, 'ไม่ปฏิบัติ')" class="btn-check-no w-28 py-2 rounded-xl border border-slate-200 hover:border-rose-500 font-semibold text-slate-500 hover:bg-slate-50 transition-all text-sm flex items-center justify-center space-x-1">
-                <span class="icon-dot w-2 h-2 rounded-full bg-slate-300"></span>
-                <span>ไม่ปฏิบัติ</span>
-              </button>
-            </div>
-          </div>
-        </div>
-
-        <!-- Item 7 -->
-        <div class="bg-white rounded-2xl p-5 shadow-sm border border-slate-200 hover:border-pink-200 transition-all card-bundle-item" data-index="7">
-          <div class="flex flex-col md:flex-row md:items-center justify-between gap-4">
-            <div class="space-y-1">
-              <div class="flex items-center space-x-2">
-                <span class="inline-flex items-center justify-center w-7 h-7 rounded-full bg-pink-100 text-pink-700 font-bold text-sm">7</span>
-                <h3 class="font-bold text-slate-800 text-base md:text-md">ททำความสะอาดบริเวณ urethral meatus เช้า – เย็นและหลังถ่ายอุจจาระทุกครั้งด้วย NSS</h3>
-              </div>
-          
-            </div>
-            <div class="flex items-center space-x-3 pl-9 md:pl-0">
-              <button onclick="setItemValue(7, 'ปฏิบัติ')" class="btn-check-yes w-24 py-2 rounded-xl border border-slate-200 hover:border-pink-500 font-semibold text-slate-500 hover:bg-slate-50 transition-all text-sm flex items-center justify-center space-x-1">
-                <span class="icon-dot w-2 h-2 rounded-full bg-slate-300"></span>
-                <span>ปฏิบัติ</span>
-              </button>
-              <button onclick="setItemValue(7, 'ไม่ปฏิบัติ')" class="btn-check-no w-28 py-2 rounded-xl border border-slate-200 hover:border-rose-500 font-semibold text-slate-500 hover:bg-slate-50 transition-all text-sm flex items-center justify-center space-x-1">
-                <span class="icon-dot w-2 h-2 rounded-full bg-slate-300"></span>
-                <span>ไม่ปฏิบัติ</span>
-              </button>
-            </div>
-          </div>
-        </div>
-
-        <!-- Item 8 -->
-        <div class="bg-white rounded-2xl p-5 shadow-sm border border-slate-200 hover:border-pink-200 transition-all card-bundle-item" data-index="8">
-          <div class="flex flex-col md:flex-row md:items-center justify-between gap-4">
-            <div class="space-y-1">
-              <div class="flex items-center space-x-2">
-                <span class="inline-flex items-center justify-center w-7 h-7 rounded-full bg-pink-100 text-pink-700 font-bold text-sm">8</span>
-                <h3 class="font-bold text-slate-800 text-base md:text-md">การเทปัสสาวะทำความสะอาดบริเวณ Urinary drainage tap ด้วย 70% alcohol ใช้ภาชนะที่สะอาด หลีกเลี่ยงอย่าให้บริเวณ Urinary drainage tap สัมผัสภาชนะที่รองรับ</h3>
-              </div>
-          
-            </div>
-            <div class="flex items-center space-x-3 pl-9 md:pl-0">
-              <button onclick="setItemValue(8, 'ปฏิบัติ')" class="btn-check-yes w-24 py-2 rounded-xl border border-slate-200 hover:border-pink-500 font-semibold text-slate-500 hover:bg-slate-50 transition-all text-sm flex items-center justify-center space-x-1">
-                <span class="icon-dot w-2 h-2 rounded-full bg-slate-300"></span>
-                <span>ปฏิบัติ</span>
-              </button>
-              <button onclick="setItemValue(8, 'ไม่ปฏิบัติ')" class="btn-check-no w-28 py-2 rounded-xl border border-slate-200 hover:border-rose-500 font-semibold text-slate-500 hover:bg-slate-50 transition-all text-sm flex items-center justify-center space-x-1">
-                <span class="icon-dot w-2 h-2 rounded-full bg-slate-300"></span>
-                <span>ไม่ปฏิบัติ</span>
-              </button>
-            </div>
-          </div>
-        </div>
-
-      </div>
-
-      <!-- Remarks Input Card -->
-      <div class="bg-white rounded-2xl p-5 shadow-sm border border-slate-200">
-        <label class="block text-sm font-semibold text-slate-700 mb-2">ข้อเสนอแนะเพิ่มเติม / หมายเหตุ</label>
-        <textarea id="evalRemarks" rows="3" placeholder="ระบุสิ่งที่พบเห็นเพิ่มเติม เช่น รายละเอียดอุปสรรค, ข้อเสนอแนะอื่นๆ..." class="w-full px-4 py-3 border border-slate-200 rounded-xl focus:ring-2 focus:ring-pink-500 focus:border-pink-500 outline-none transition-all resize-none"></textarea>
-      </div>
-
-      <!-- Action Buttons -->
-      <div class="flex flex-col sm:flex-row justify-end items-center gap-4 pt-4">
-        <button onclick="resetCurrentForm()" class="w-full sm:w-auto px-6 py-3 border border-slate-200 hover:border-slate-300 text-slate-600 rounded-xl font-semibold hover:bg-slate-100 transition-all flex items-center justify-center space-x-2">
-          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
-          <span>ล้างข้อมูล</span>
-        </button>
-        <button onclick="submitAssessment()" class="w-full sm:w-auto px-10 py-3 bg-pink-600 hover:bg-pink-700 text-white font-bold rounded-xl shadow-lg shadow-pink-600/25 hover:shadow-pink-700/30 transition-all flex items-center justify-center space-x-2">
-          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4"></path></svg>
-          <span>บันทึกและส่งข้อมูล</span>
-        </button>
-      </div>
-
-    </div>
-
-    <!-- TAB 2: HISTORY VIEW -->
-    <div id="tab-history-content" class="tab-content hidden space-y-6">
-      
-      <!-- Statistics Widget inside History (Pink Accents) -->
-      <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <div class="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm flex items-center space-x-4">
-          <div class="p-3 bg-amber-50 text-amber-600 rounded-xl">
-            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path></svg>
-          </div>
-          <div>
-            <span class="text-xs text-slate-500 block">รอการส่งขึ้น Google Sheets</span>
-            <span id="unsyncedCountTitle" class="text-2xl font-bold text-amber-600">0 รายการ</span>
-          </div>
-        </div>
-        <div class="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm flex items-center space-x-4">
-          <div class="p-3 bg-pink-50 text-pink-600 rounded-xl">
-            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
-          </div>
-          <div>
-            <span class="text-xs text-slate-500 block">ซิงค์สำเร็จแล้ว</span>
-            <span id="syncedCountTitle" class="text-2xl font-bold text-pink-600">0 รายการ</span>
-          </div>
-        </div>
-        <div class="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm flex items-center space-x-4">
-          <button onclick="syncAllRecords()" id="btnSyncAll" class="w-full h-full bg-pink-600 hover:bg-pink-700 text-white font-bold py-3 px-4 rounded-xl shadow-md transition-all flex items-center justify-center space-x-2">
-            <svg class="w-5 h-5 animate-bounce" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 1121.21 8H17"></path></svg>
-            <span>ซิงค์ขึ้น Google Sheets ทั้งหมด</span>
-          </button>
-        </div>
-      </div>
-
-      <!-- History Table/List -->
-      <div class="bg-white rounded-2xl p-5 shadow-sm border border-slate-200">
-        <div class="flex justify-between items-center pb-4 mb-4 border-b border-slate-100">
-          <h2 class="font-bold text-slate-800 text-lg flex items-center space-x-2">
-            <span>รายการประเมินทั้งหมดที่บันทึกไว้ในเครื่องนี้</span>
-            <span class="text-xs font-normal text-slate-400">(ข้อมูลเก็บในเบราว์เซอร์ปลอดภัยไร้กังวลสูญหาย)</span>
-          </h2>
-          <button onclick="confirmClearHistory()" class="text-xs text-rose-600 hover:text-rose-800 font-semibold flex items-center space-x-1">
-            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
-            <span>ล้างประวัติทั้งหมด</span>
-          </button>
-        </div>
-
-        <div class="overflow-x-auto">
-          <table class="w-full text-left border-collapse">
-            <thead>
-              <tr class="border-b border-slate-200 text-slate-400 text-xs font-semibold uppercase tracking-wider bg-slate-50">
-                <th class="py-3 px-4">วันที่ประเมิน</th>
-                <th class="py-3 px-4 text-center">ผลลัพธ์การประเมิน</th>
-                <th class="py-3 px-4 text-center">คะแนน</th>
-                <th class="py-3 px-4 text-center">การซิงค์ข้อมูล</th>
-                <th class="py-3 px-4 text-center">การจัดการ</th>
-              </tr>
-            </thead>
-            <tbody id="historyListBody" class="divide-y divide-slate-100 text-sm text-slate-600">
-              <!-- Dynamically populated rows -->
-            </tbody>
-          </table>
-        </div>
-
-        <!-- Empty State -->
-        <div id="historyEmptyState" class="hidden flex flex-col items-center justify-center py-12 text-slate-400 space-y-3">
-          <svg class="w-16 h-16 text-slate-300" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"></path></svg>
-          <span class="text-base font-medium">ไม่มีประวัติการประเมินในเครื่องนี้</span>
-          <button onclick="switchTab('form')" class="px-4 py-2 bg-pink-100 text-pink-700 font-bold rounded-xl text-sm hover:bg-pink-200 transition-all">ประเมินผู้ป่วยรายใหม่</button>
-        </div>
-      </div>
-
-    </div>
-
-    <!-- TAB 3: REPORTS & DASHBOARD VIEW -->
-    <div id="tab-reports-content" class="tab-content hidden space-y-6">
-      
-      <!-- Dashboard Top Controls -->
-      <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-white p-4 rounded-2xl border border-slate-200 shadow-sm">
-        <div>
-          <h2 class="font-bold text-slate-800 text-lg flex items-center space-x-2">
-            <span class="w-3 h-6 bg-pink-600 rounded"></span>
-            <span>Dashboard สรุปผลลัพธ์และสถิติภาพรวม</span>
-          </h2>
-          <p class="text-xs text-slate-500">ข้อมูลอัปเดตแบบเรียลไทม์จากบันทึกในเครื่องและวิเคราะห์สัดส่วนรายข้อ</p>
-        </div>
-        <div class="flex items-center space-x-2 w-full sm:w-auto">
-         <button onclick="generateDemoData()" class="hidden" "flex-1 sm:flex-initial px-4 py-2 text-xs font-bold bg-pink-50 hover:bg-pink-100 text-pink-700 border border-pink-200 rounded-xl transition-all flex items-center justify-center space-x-1">
-            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19.428 15.428a2 2 0 00-1.022-.547l-2.387-.477a6 6 0 00-3.86.517l-.318.158a6 6 0 01-3.86.517L6.05 15.21a2 2 0 00-1.806.547M8 4h8l-1 1v5.172a2 2 0 00.586 1.414l5 5c1.26 1.26.367 3.414-1.415 3.414H4.828c-1.782 0-2.674-2.154-1.414-3.414l5-5A2 2 0 009 10.172V5L8 4z"></path></svg>
-            <span class="hidden">ทดสอบด้วยข้อมูลจำลอง</span>
-          </button>
-          <button onclick="confirmClearAllData()" class="flex-1 sm:flex-initial px-4 py-2 text-xs font-bold bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 rounded-xl transition-all flex items-center justify-center space-x-1">
-            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
-            <span>ล้างสถิติทั้งหมด</span>
-          </button>
-        </div>
-      </div>
-
-      <!-- TIME-PERIOD FILTER PANEL (New Dynamic Filter Component) -->
-      <div class="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm space-y-4">
-        <div class="flex flex-col md:flex-row md:items-center justify-between gap-4">
-          <span class="text-sm font-bold text-slate-700 flex items-center space-x-1.5">
-            <span class="w-2 h-2 rounded-full bg-pink-500 animate-pulse"></span>
-            <span>เลือกช่วงเวลาเพื่อกรองการแสดงผลสถิติ:</span>
-          </span>
-          <!-- Tabbed Segment Buttons for Filters -->
-          <div class="flex flex-wrap gap-1 bg-slate-100 p-1 rounded-xl">
-            <button onclick="setFilterType('all')" id="filter-btn-all" class="filter-tab-btn px-4 py-2 rounded-lg text-xs font-bold transition-all bg-pink-600 text-white shadow-sm">ทั้งหมด</button>
-            <button onclick="setFilterType('month')" id="filter-btn-month" class="filter-tab-btn px-4 py-2 rounded-lg text-xs font-semibold transition-all text-slate-600 hover:text-slate-800">รายเดือน</button>
-            <button onclick="setFilterType('year')" id="filter-btn-year" class="filter-tab-btn px-4 py-2 rounded-lg text-xs font-semibold transition-all text-slate-600 hover:text-slate-800">รายปี</button>
-            <button onclick="setFilterType('range')" id="filter-btn-range" class="filter-tab-btn px-4 py-2 rounded-lg text-xs font-semibold transition-all text-slate-600 hover:text-slate-800">ระบุช่วงวันที่</button>
-          </div>
-        </div>
-        
-        <!-- Interactive Inputs Display Container -->
-        <div class="grid grid-cols-1 md:grid-cols-3 gap-4 pt-3 border-t border-slate-100 hidden" id="filterInputsContainer">
-          
-          <!-- Month Input -->
-          <div id="filter-input-month" class="filter-input-sub hidden">
-            <label class="block text-xs font-semibold text-slate-500 mb-1">กรุณาเลือกเดือนที่ต้องการประเมิน</label>
-            <input type="month" id="filterMonthVal" onchange="renderReports()" class="w-full px-3 py-2 border border-slate-200 rounded-xl focus:ring-2 focus:ring-pink-500 focus:border-pink-500 outline-none text-sm text-slate-700">
-          </div>
-          
-          <!-- Year Dropdown -->
-          <div id="filter-input-year" class="filter-input-sub hidden">
-            <label class="block text-xs font-semibold text-slate-500 mb-1">กรุณาเลือกปีงบประมาณ</label>
-            <select id="filterYearVal" onchange="renderReports()" class="w-full px-3 py-2 border border-slate-200 rounded-xl focus:ring-2 focus:ring-pink-500 focus:border-pink-500 outline-none text-sm text-slate-700">
-              <!-- Options populated dynamically -->
-            </select>
-          </div>
-          
-          <!-- Custom Date Range -->
-          <div id="filter-input-range" class="filter-input-sub hidden md:col-span-2 flex items-center space-x-2">
-            <div class="flex-1">
-              <label class="block text-xs font-semibold text-slate-500 mb-1">เริ่มประเมินตั้งแต่วันที่</label>
-              <input type="date" id="filterStartVal" onchange="renderReports()" class="w-full px-3 py-2 border border-slate-200 rounded-xl focus:ring-2 focus:ring-pink-500 focus:border-pink-500 outline-none text-sm text-slate-700">
-            </div>
-            <span class="pt-5 text-slate-400 font-bold text-xs uppercase">ถึง</span>
-            <div class="flex-1">
-              <label class="block text-xs font-semibold text-slate-500 mb-1">สิ้นสุดวันที่</label>
-              <input type="date" id="filterEndVal" onchange="renderReports()" class="w-full px-3 py-2 border border-slate-200 rounded-xl focus:ring-2 focus:ring-pink-500 focus:border-pink-500 outline-none text-sm text-slate-700">
-            </div>
-          </div>
-
-        </div>
-      </div>
-
-      <!-- Key Stats Overview Card (Adjusted to 3 columns layout) -->
-      <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
-        <div class="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm flex flex-col justify-between">
-          <span class="text-xs text-slate-400 block font-semibold uppercase tracking-wider">ประเมินสะสมในช่วงนี้</span>
-          <div class="flex items-baseline space-x-1.5 mt-2">
-            <span id="repTotalEvaluations" class="text-4xl font-black text-slate-800">0</span>
-            <span class="text-sm text-slate-500 font-bold">ครั้ง</span>
-          </div>
-          <span class="text-[10px] text-slate-400 block mt-2">จำนวนข้อมูลตามเงื่อนไขเวลาที่กรอง</span>
-        </div>
-        <div class="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm flex flex-col justify-between">
-          <span class="text-xs text-slate-400 block font-semibold uppercase tracking-wider">ผ่านเกณฑ์สมบูรณ์ (100%)</span>
-          <div class="flex items-baseline space-x-1.5 mt-2">
-            <span id="repFullComplianceCount" class="text-4xl font-black text-pink-600">0</span>
-            <span class="text-sm text-pink-500 font-bold">ครั้ง</span>
-          </div>
-          <span id="repFullCompliancePct" class="text-[10px] text-slate-400 block mt-2">0% ของการประเมินทั้งหมด</span>
-        </div>
-        <div class="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm flex flex-col justify-between">
-          <span class="text-xs text-slate-400 block font-semibold uppercase tracking-wider">จุดที่ต้องปรับปรุงเร่งด่วน</span>
-          <span id="repCriticalImprovement" class="text-sm font-bold text-rose-600 line-clamp-2 block mt-2">ไม่มีข้อมูล</span>
-          <span class="text-[10px] text-slate-400 block mt-2">หัวข้อที่อัตราการปฏิบัติต่ำที่สุด</span>
-        </div>
-      </div>
-
-      <!-- MAIN CHARTS ROW (Updated to Pink Tone) -->
-      <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        
-        <!-- Chart 1: Grouped Bar Chart -->
-        <div class="bg-white rounded-2xl p-5 shadow-sm border border-slate-200">
-          <div class="pb-3 mb-4 border-b border-slate-100 flex justify-between items-center">
-            <h3 class="font-bold text-slate-800 text-sm md:text-base flex items-center space-x-2">
-              <span class="w-2.5 h-2.5 rounded-full bg-pink-500 animate-pulse"></span>
-              <span>เปรียบเทียบ ปฏิบัติ/ไม่ปฏิบัติ รายข้อ (%)</span>
-            </h3>
-            <span class="text-[10px] bg-slate-100 px-2.5 py-1 rounded-full font-bold text-slate-500">เกณฑ์ 8 ข้อ</span>
-          </div>
-          <div class="relative min-h-[350px] w-full flex items-center justify-center">
-            <canvas id="comparisonChartCanvas" class="max-h-[380px]"></canvas>
-            <div id="chart1EmptyState" class="absolute inset-0 bg-white/95 flex flex-col items-center justify-center text-slate-400 space-y-2 hidden">
-              <svg class="w-12 h-12 text-slate-300" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 3.055A9.003 9.003 0 1020.945 13H11V3.055z"></path></svg>
-              <p class="text-xs font-semibold">ไม่พบข้อมูลประเมินตามตัวกรองช่วงเวลาดังกล่าว</p>
-            </div>
-          </div>
-        </div>
-
-        <!-- Chart 2: Compliance Trend Line Chart (Vibrant Pink Tint) -->
-        <div class="bg-white rounded-2xl p-5 shadow-sm border border-slate-200">
-          <div class="pb-3 mb-4 border-b border-slate-100 flex justify-between items-center">
-            <h3 class="font-bold text-slate-800 text-sm md:text-base flex items-center space-x-2">
-              <span class="w-2.5 h-2.5 rounded-full bg-pink-400 animate-ping"></span>
-              <span>แนวโน้มความสอดคล้องตามเกณฑ์รายวัน (%)</span>
-            </h3>
-            <span class="text-[10px] bg-slate-100 px-2.5 py-1 rounded-full font-bold text-slate-500">ประวัติย้อนหลัง</span>
-          </div>
-          <div class="relative min-h-[350px] w-full flex items-center justify-center">
-            <canvas id="trendChartCanvas" class="max-h-[380px]"></canvas>
-            <div id="chart2EmptyState" class="absolute inset-0 bg-white/95 flex flex-col items-center justify-center text-slate-400 space-y-2 hidden">
-              <svg class="w-12 h-12 text-slate-300" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 12l3-3 3 3 4-4M8 21h8a2 2 0 002-2V5a2 2 0 00-2-2H8a2 2 0 00-2 2v14a2 2 0 002 2z"></path></svg>
-              <p class="text-xs font-semibold">ไม่พบข้อมูลประเมินตามตัวกรองช่วงเวลาดังกล่าว</p>
-            </div>
-          </div>
-        </div>
-
-      </div>
-
-      <!-- Compliance by Item Detailed Breakdown (Removed Icon) -->
-      <div class="bg-white rounded-2xl p-5 shadow-sm border border-slate-200">
-        <h2 class="font-bold text-slate-800 text-lg mb-4 flex items-center space-x-2">
-          <span>ตารางรายละเอียดอัตราการปฏิบัติตามมาตรฐาน</span>
-        </h2>
-        
-        <div class="space-y-4" id="itemBreakdownContainer">
-          <!-- Dynamically populated breakdown elements -->
-        </div>
-      </div>
-
-    </div>
-
-    <!-- TAB 4: SETTINGS VIEW -->
-    <div id="tab-settings-content" class="tab-content hidden space-y-6">
-      
-      <!-- API Setting Card -->
-     <div class="bg-white rounded-2xl p-5 shadow-sm border border-slate-200">
-  <div class="flex items-center space-x-2 pb-4 mb-4 border-b border-slate-100">
-    <h2 class="font-semibold text-slate-800 text-lg">ตั้งค่าการซิงค์ข้อมูล Google Sheets</h2>
   </div>
 
-  <div class="space-y-4">
+  <!-- การแจ้งเตือนอัจฉริยะ (Custom Modal) -->
+  <div id="customAlert" class="fixed inset-0 flex items-center justify-center z-50 bg-black/40 hidden backdrop-blur-sm transition-all duration-300">
+    <div class="bg-white rounded-3xl p-6 max-w-md w-full mx-4 shadow-2xl transform scale-95 transition-transform duration-300">
+      <div id="alertIconContainer" class="flex items-center justify-center w-16 h-16 rounded-full mx-auto mb-4 bg-emerald-100 text-emerald-600">
+        <i id="alertIcon" class="fa-solid fa-circle-check text-2xl"></i>
+      </div>
+      <h3 id="alertTitle" class="text-xl font-bold text-center text-slate-900 mb-2">สำเร็จ</h3>
+      <p id="alertMessage" class="text-slate-600 text-center text-sm mb-6 leading-relaxed">บันทึกข้อมูลเรียบร้อยแล้ว</p>
+      <button onclick="closeAlert()" class="w-full py-3 bg-gradient-to-r from-teal-500 to-emerald-500 text-white font-bold rounded-2xl shadow-lg shadow-teal-500/20 hover:shadow-teal-500/40 transform active:scale-95 transition-all">ตกลง</button>
+    </div>
+  </div>
+
+  <div class="max-w-7xl mx-auto px-4 py-6 md:py-10">
     
-    <div class="p-4 bg-cyan-50/70 border border-cyan-100 rounded-2xl flex items-start gap-3">
-        <i data-lucide="info" class="w-5 h-5 text-cyan-600 mt-0.5 flex-shrink-0"></i>
-        <div class="text-xs text-cyan-800 leading-relaxed">
-            <div class="flex justify-between items-center mb-2">
-                <p class="font-extrabold">สเปรดชีตเป้าหมายหลัก:</p>
-                <span class="px-2 py-0.5 bg-green-100 text-green-700 rounded-full text-[10px] font-bold uppercase">
-                    Sync Enabled
-                </span>
+    <!-- ส่วนหัวหน้าจอ (Header) สีสันสดใส สวยงาม และเด่นสง่า -->
+    <header class="relative mb-8 bg-gradient-to-r from-teal-500 via-emerald-500 to-indigo-600 p-6 md:p-8 rounded-[2rem] shadow-xl text-white overflow-hidden">
+      <div class="absolute -right-10 -top-10 w-40 h-40 bg-white/10 rounded-full blur-2xl"></div>
+      <div class="absolute -left-10 -bottom-10 w-40 h-40 bg-white/10 rounded-full blur-2xl"></div>
+      
+      <div class="relative flex flex-col md:flex-row items-center justify-between gap-4">
+        <div class="text-center md:text-left">
+          <span class="bg-white/20 backdrop-blur-md text-white text-xs font-bold px-3 py-1 rounded-full uppercase tracking-wider mb-2 inline-block">
+            <i class="fa-solid fa-hospital-user mr-1.5"></i> Hospital Tool 2026
+          </span>
+          <h1 class="text-3xl md:text-4xl font-extrabold tracking-tight">CAUTI Care Bundle Checklist</h1>
+          <p class="text-sm md:text-base opacity-90 mt-1 font-light">
+            ระบบติดตามผลแนวทางการปฏิบัติการดูแลผู้ป่วยใส่คาสายสวนปัสสาวะ • โรงพยาบาลพุนพิน
+          </p>
+        </div>
+        <div class="flex flex-col sm:flex-row items-center gap-2">
+          <button onclick="loadRealData()" class="flex items-center gap-2 bg-white/20 hover:bg-white/30 backdrop-blur-md py-2.5 px-4 rounded-2xl border border-white/20 text-xs font-bold transition-all cursor-pointer">
+            <i class="fa-solid fa-arrows-rotate"></i> ดึงข้อมูลล่าสุด
+          </button>
+          <div class="flex items-center gap-2 bg-white/10 backdrop-blur-md py-2.5 px-4 rounded-2xl border border-white/20">
+            <i class="fa-solid fa-circle-nodes text-emerald-300 animate-pulse text-lg"></i>
+            <span id="connectionBadge" class="text-xs font-bold">กำลังเชื่อมต่อระบบหลังบ้าน...</span>
+          </div>
+        </div>
+      </div>
+    </header>
+
+    <!-- พื้นหลังแบบ Grid แผงควบคุมแบ่งสัดส่วน -->
+    <div class="grid grid-cols-1 lg:grid-cols-12 gap-8">
+      
+      <!-- ฝั่งซ้าย: ฟอร์มประเมินการปฏิบัติงาน (5 คอลัมน์) -->
+      <div class="lg:col-span-5 bg-white/90 backdrop-blur-md rounded-[2rem] shadow-xl border border-slate-100 p-6 flex flex-col justify-between">
+        <div class="w-full">
+          <div class="flex justify-between items-center mb-6 border-b pb-4 border-slate-100">
+            <h2 class="text-xl font-bold text-slate-800 flex items-center gap-2">
+              <i class="fa-solid fa-file-invoice text-teal-500"></i>
+              แบบประเมินผู้ป่วยรายเคส
+            </h2>
+            <button type="button" onclick="clearForm()" class="text-xs font-bold text-amber-600 hover:text-amber-700 bg-amber-50 px-3 py-1.5 rounded-xl transition-all cursor-pointer">
+              <i class="fa-solid fa-rotate mr-1"></i> ล้างฟอร์ม
+            </button>
+          </div>
+
+          <form id="cautiForm" onsubmit="handleFormSubmit(event)" class="space-y-4">
+            <!-- วันที่ประเมิน -->
+            <div class="bg-slate-50/50 p-4 rounded-2xl border border-slate-100">
+              <label class="block font-bold text-slate-700 mb-2 text-sm">
+                <i class="fa-regular fa-calendar-check mr-1.5 text-teal-600"></i> วันที่ทำการประเมิน
+              </label>
+              <input type="date" id="evalDate" required class="w-full p-3 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-teal-400 bg-white font-semibold text-slate-700 shadow-sm transition-all text-sm">
             </div>
-            <a href="https://docs.google.com/spreadsheets/d/1yOPzmyd7ExMELRpwltyPu7onH5dCwpjZUPs5IP2JqQ4/edit?gid=0#gid=0" 
-               target="_blank" 
-               class="font-bold underline text-indigo-600 hover:text-indigo-800 flex items-center gap-1">
-                cauti - Google ชีต (คลิกเพื่อเปิดดูสเปรดชีต)
-                <i data-lucide="external-link" class="w-3.5 h-3.5"></i>
-            </a>
-            <p class="mt-2 text-[11px] opacity-80">
-                ข้อมูลจะถูกบันทึกลงในแท็บ <code class="bg-cyan-100 px-1 rounded">"CAUTi"</code> อัตโนมัติ
-            </p>
-        </div>
-    </div>
 
-    <div>
-      <label class="block text-sm font-medium text-slate-700 mb-1">Google Apps Script Web App URL</label>
-      <input type="text" id="apiEndpointUrl" placeholder="https://script.google.com/macros/s/.../exec" class="w-full px-4 py-2 border border-slate-200 rounded-xl focus:ring-2 focus:ring-pink-500 focus:border-pink-500 outline-none transition-all text-sm font-mono text-slate-750">
-      <p class="text-xs text-slate-400 mt-1">กรอก URL ของ Web App ที่ได้รับหลังจาก Deploy โค้ดในแอปพลิเคชัน Google Apps Script</p>
-    </div>
+            <!-- ชุดคำถาม 1 - 8 จากเอกสารรพ.พุนพิน ดีไซน์: ปฏิบัติเป็นดีฟอลต์ + เพิ่มปุ่ม N/A + เพิ่มช่องข้อความรายละเอียดของแต่ละข้อ -->
+            <div class="space-y-4 max-h-[50vh] overflow-y-auto pr-1.5 custom-scroll">
+              
+              <!-- ข้อ 1 -->
+              <div class="bg-slate-50/30 p-3.5 rounded-2xl border border-slate-100 hover:border-teal-200 transition-all">
+                <p class="font-bold text-slate-800 text-sm mb-2.5">1. ประเมินความจำเป็นในการใส่สายสวนปัสสาวะ ( เวรเช้าทำ )</p>
+                <div class="flex rounded-2xl bg-slate-100 p-1 border border-slate-200 gap-1 select-none">
+                  <label class="flex-1">
+                    <input type="radio" name="q1" value="ปฏิบัติ" checked required class="sr-only peer">
+                    <div class="flex items-center justify-center gap-1.5 py-2.5 rounded-xl font-bold text-[11px] text-slate-500 cursor-pointer transition-all hover:bg-slate-50 peer-checked:bg-emerald-500 peer-checked:text-white peer-checked:shadow-md">
+                      <i class="fa-solid fa-circle-check text-emerald-500 text-xs"></i> ปฏิบัติ
+                    </div>
+                  </label>
+                  <label class="flex-1">
+                    <input type="radio" name="q1" value="ไม่ปฏิบัติ" class="sr-only peer">
+                    <div class="flex items-center justify-center gap-1.5 py-2.5 rounded-xl font-bold text-[11px] text-slate-500 cursor-pointer transition-all hover:bg-slate-50 peer-checked:bg-rose-500 peer-checked:text-white peer-checked:shadow-md">
+                      <i class="fa-solid fa-circle-xmark text-rose-500 text-xs"></i> ไม่ปฏิบัติ
+                    </div>
+                  </label>
+                  <label class="flex-1">
+                    <input type="radio" name="q1" value="N/A" class="sr-only peer">
+                    <div class="flex items-center justify-center gap-1.5 py-2.5 rounded-xl font-bold text-[11px] text-slate-500 cursor-pointer transition-all hover:bg-slate-50 peer-checked:bg-slate-500 peer-checked:text-white peer-checked:shadow-md">
+                      <i class="fa-solid fa-circle-minus text-slate-400 text-xs"></i> N/A
+                    </div>
+                  </label>
+                </div>
+                <div class="mt-2">
+                  <input type="text" id="q1_note" name="q1_note" placeholder="✍️ ระบุรายละเอียดเพิ่มเติม..." class="w-full p-2.5 text-xs border border-slate-200 rounded-xl bg-white focus:outline-none focus:ring-2 focus:ring-teal-400 text-slate-700 shadow-sm placeholder:text-slate-400">
+                </div>
+              </div>
 
-    <div class="flex flex-col sm:flex-row gap-2 pt-2">
-      <button onclick="saveSettings()" class="bg-pink-600 hover:bg-pink-700 text-white font-bold py-2.5 px-6 rounded-xl shadow-md transition-all text-sm">
-        บันทึกการตั้งค่า
-      </button>
-      <button onclick="testApiConnection()" class="border border-slate-200 hover:bg-slate-50 text-slate-600 font-bold py-2.5 px-6 rounded-xl transition-all text-sm flex items-center justify-center space-x-1">
-        <span>ทดสอบการเชื่อมต่อ API</span>
-      </button>
-    </div>
-  </div>
-</div>
+              <!-- ข้อ 2 -->
+              <div class="bg-slate-50/30 p-3.5 rounded-2xl border border-slate-100 hover:border-teal-200 transition-all">
+                <p class="font-bold text-slate-800 text-sm mb-2.5">2. ใช้ hand hygiene เมื่อสัมผัสสายสวนปัสสาวะ</p>
+                <div class="flex rounded-2xl bg-slate-100 p-1 border border-slate-200 gap-1 select-none">
+                  <label class="flex-1">
+                    <input type="radio" name="q2" value="ปฏิบัติ" checked required class="sr-only peer">
+                    <div class="flex items-center justify-center gap-1.5 py-2.5 rounded-xl font-bold text-[11px] text-slate-500 cursor-pointer transition-all hover:bg-slate-50 peer-checked:bg-emerald-500 peer-checked:text-white peer-checked:shadow-md">
+                      <i class="fa-solid fa-circle-check text-emerald-500 text-xs"></i> ปฏิบัติ
+                    </div>
+                  </label>
+                  <label class="flex-1">
+                    <input type="radio" name="q2" value="ไม่ปฏิบัติ" class="sr-only peer">
+                    <div class="flex items-center justify-center gap-1.5 py-2.5 rounded-xl font-bold text-[11px] text-slate-500 cursor-pointer transition-all hover:bg-slate-50 peer-checked:bg-rose-500 peer-checked:text-white peer-checked:shadow-md">
+                      <i class="fa-solid fa-circle-xmark text-rose-500 text-xs"></i> ไม่ปฏิบัติ
+                    </div>
+                  </label>
+                  <label class="flex-1">
+                    <input type="radio" name="q2" value="N/A" class="sr-only peer">
+                    <div class="flex items-center justify-center gap-1.5 py-2.5 rounded-xl font-bold text-[11px] text-slate-500 cursor-pointer transition-all hover:bg-slate-50 peer-checked:bg-slate-500 peer-checked:text-white peer-checked:shadow-md">
+                      <i class="fa-solid fa-circle-minus text-slate-400 text-xs"></i> N/A
+                    </div>
+                  </label>
+                </div>
+                <div class="mt-2">
+                  <input type="text" id="q2_note" name="q2_note" placeholder="✍️ ระบุรายละเอียดเพิ่มเติม..." class="w-full p-2.5 text-xs border border-slate-200 rounded-xl bg-white focus:outline-none focus:ring-2 focus:ring-teal-400 text-slate-700 shadow-sm placeholder:text-slate-400">
+                </div>
+              </div>
 
-    <!-- Instructions Card (ซ่อนไว้ด้วยคลาส hidden) -->
-<div class="hidden bg-white rounded-2xl p-5 shadow-sm border border-slate-200">
-  <h2 class="font-semibold text-slate-800 text-lg pb-4 mb-4 border-b border-slate-100">
-    <span>วิธีการเริ่มใช้งานร่วมกับ Google Sheets (ภายใน 3 นาที)</span>
-  </h2>
+              <!-- ข้อ 3 -->
+              <div class="bg-slate-50/30 p-3.5 rounded-2xl border border-slate-100 hover:border-teal-200 transition-all">
+                <p class="font-bold text-slate-800 text-sm mb-2.5">3. ให้ระบบปัสสาวะเป็น close system ตลอดเวลา</p>
+                <div class="flex rounded-2xl bg-slate-100 p-1 border border-slate-200 gap-1 select-none">
+                  <label class="flex-1">
+                    <input type="radio" name="q3" value="ปฏิบัติ" checked required class="sr-only peer">
+                    <div class="flex items-center justify-center gap-1.5 py-2.5 rounded-xl font-bold text-[11px] text-slate-500 cursor-pointer transition-all hover:bg-slate-50 peer-checked:bg-emerald-500 peer-checked:text-white peer-checked:shadow-md">
+                      <i class="fa-solid fa-circle-check text-emerald-500 text-xs"></i> ปฏิบัติ
+                    </div>
+                  </label>
+                  <label class="flex-1">
+                    <input type="radio" name="q3" value="ไม่ปฏิบัติ" class="sr-only peer">
+                    <div class="flex items-center justify-center gap-1.5 py-2.5 rounded-xl font-bold text-[11px] text-slate-500 cursor-pointer transition-all hover:bg-slate-50 peer-checked:bg-rose-500 peer-checked:text-white peer-checked:shadow-md">
+                      <i class="fa-solid fa-circle-xmark text-rose-500 text-xs"></i> ไม่ปฏิบัติ
+                    </div>
+                  </label>
+                  <label class="flex-1">
+                    <input type="radio" name="q3" value="N/A" class="sr-only peer">
+                    <div class="flex items-center justify-center gap-1.5 py-2.5 rounded-xl font-bold text-[11px] text-slate-500 cursor-pointer transition-all hover:bg-slate-50 peer-checked:bg-slate-500 peer-checked:text-white peer-checked:shadow-md">
+                      <i class="fa-solid fa-circle-minus text-slate-400 text-xs"></i> N/A
+                    </div>
+                  </label>
+                </div>
+                <div class="mt-2">
+                  <input type="text" id="q3_note" name="q3_note" placeholder="✍️ ระบุรายละเอียดเพิ่มเติม..." class="w-full p-2.5 text-xs border border-slate-200 rounded-xl bg-white focus:outline-none focus:ring-2 focus:ring-teal-400 text-slate-700 shadow-sm placeholder:text-slate-400">
+                </div>
+              </div>
 
-        <div class="space-y-4 text-sm text-slate-600">
-          <ol class="list-decimal pl-5 space-y-3">
-            <li>เปิดลิงก์ Google Sheet ที่กำหนด: <a href="https://docs.google.com/spreadsheets/d/1yOPzmyd7ExMELRpwltyPu7onH5dCwpjZUPs5IP2JqQ4/edit?gid=0#gid=0" target="_blank" class="text-pink-600 hover:underline font-medium">cauti - Google ชีต</a></li>
-            <li>ไปที่เมนู <strong>ส่วนขยาย (Extensions)</strong> &gt; เลือก <strong>Apps Script</strong></li>
-            <li>ลบโค้ดเริ่มต้นออก แล้วคัดลอกโค้ดจากไฟล์ <code>รหัส.gs</code> ไปวาง</li>
-            <li>คลิกปุ่ม <strong>บันทึกโครงการ (Save Project)</strong> (ไอคอนแผ่นดิสก์)</li>
-            <li>คลิกปุ่ม <strong>การใช้งาน (Deploy)</strong> ด้านบนขวา &gt; เลือก <strong>การจัดการการทำงานที่จัดเตรียมไว้ใหม่ (New Deployment)</strong></li>
-            <li>เลือกประเภทการปรับใช้เป็น <strong>เว็บแอป (Web App)</strong></li>
-            <li>ตั้งค่าการตั้งค่าต่อไปนี้:
-              <ul class="list-disc pl-5 mt-1 space-y-1">
-                <li><strong>เรียกใช้ในฐานะ (Execute as):</strong> "ฉัน (Your Email)"</li>
-                <li><strong>ผู้มีสิทธิ์เข้าถึง (Who has access):</strong> "ทุกคน (Anyone)" <span class="text-xs text-rose-500 font-semibold">(จำเป็นสำหรับการรับส่งข้อมูล)</span></li>
-              </ul>
-            </li>
-            <li>คลิก <strong>ปรับใช้ (Deploy)</strong> และให้สิทธิ์การเข้าถึงข้อมูล (Authorize Access) เมื่อมีป็อปอัปถาม</li>
-            <li>คัดลอก <strong>URL เว็บแอป (Web App URL)</strong> ที่ได้รับ มาวางในส่วน "ตั้งค่าการซิงค์ข้อมูล" ด้านบน และกดบันทึก</li>
-          </ol>
+              <!-- ข้อ 4 -->
+              <div class="bg-slate-50/30 p-3.5 rounded-2xl border border-slate-100 hover:border-teal-200 transition-all">
+                <p class="font-bold text-slate-800 text-sm mb-1">4. ให้สายสวนปัสสาวะอยู่ในตำแหน่งที่เหมาะสมเพื่อให้ปัสสาวะไหลได้สะดวก</p>
+                <p class="text-xs text-slate-400 mb-2.5">(ตลอดเวลา ไม่มีการอุดตัน สายไม่งอพับ)</p>
+                <div class="flex rounded-2xl bg-slate-100 p-1 border border-slate-200 gap-1 select-none">
+                  <label class="flex-1">
+                    <input type="radio" name="q4" value="ปฏิบัติ" checked required class="sr-only peer">
+                    <div class="flex items-center justify-center gap-1.5 py-2.5 rounded-xl font-bold text-[11px] text-slate-500 cursor-pointer transition-all hover:bg-slate-50 peer-checked:bg-emerald-500 peer-checked:text-white peer-checked:shadow-md">
+                      <i class="fa-solid fa-circle-check text-emerald-500 text-xs"></i> ปฏิบัติ
+                    </div>
+                  </label>
+                  <label class="flex-1">
+                    <input type="radio" name="q4" value="ไม่ปฏิบัติ" class="sr-only peer">
+                    <div class="flex items-center justify-center gap-1.5 py-2.5 rounded-xl font-bold text-[11px] text-slate-500 cursor-pointer transition-all hover:bg-slate-50 peer-checked:bg-rose-500 peer-checked:text-white peer-checked:shadow-md">
+                      <i class="fa-solid fa-circle-xmark text-rose-500 text-xs"></i> ไม่ปฏิบัติ
+                    </div>
+                  </label>
+                  <label class="flex-1">
+                    <input type="radio" name="q4" value="N/A" class="sr-only peer">
+                    <div class="flex items-center justify-center gap-1.5 py-2.5 rounded-xl font-bold text-[11px] text-slate-500 cursor-pointer transition-all hover:bg-slate-50 peer-checked:bg-slate-500 peer-checked:text-white peer-checked:shadow-md">
+                      <i class="fa-solid fa-circle-minus text-slate-400 text-xs"></i> N/A
+                    </div>
+                  </label>
+                </div>
+                <div class="mt-2">
+                  <input type="text" id="q4_note" name="q4_note" placeholder="✍️ ระบุรายละเอียดเพิ่มเติม..." class="w-full p-2.5 text-xs border border-slate-200 rounded-xl bg-white focus:outline-none focus:ring-2 focus:ring-teal-400 text-slate-700 shadow-sm placeholder:text-slate-400">
+                </div>
+              </div>
+
+              <!-- ข้อ 5 -->
+              <div class="bg-slate-50/30 p-3.5 rounded-2xl border border-slate-100 hover:border-teal-200 transition-all">
+                <p class="font-bold text-slate-800 text-sm mb-2.5">5. จัดวางตำแหน่งของถุงเก็บปัสสาวะแขวนไว้ต่ำกว่าระดับกระเพาะปัสสาวะ โดยไม่สัมผัสพื้น</p>
+                <div class="flex rounded-2xl bg-slate-100 p-1 border border-slate-200 gap-1 select-none">
+                  <label class="flex-1">
+                    <input type="radio" name="q5" value="ปฏิบัติ" checked required class="sr-only peer">
+                    <div class="flex items-center justify-center gap-1.5 py-2.5 rounded-xl font-bold text-[11px] text-slate-500 cursor-pointer transition-all hover:bg-slate-50 peer-checked:bg-emerald-500 peer-checked:text-white peer-checked:shadow-md">
+                      <i class="fa-solid fa-circle-check text-emerald-500 text-xs"></i> ปฏิบัติ
+                    </div>
+                  </label>
+                  <label class="flex-1">
+                    <input type="radio" name="q5" value="ไม่ปฏิบัติ" class="sr-only peer">
+                    <div class="flex items-center justify-center gap-1.5 py-2.5 rounded-xl font-bold text-[11px] text-slate-500 cursor-pointer transition-all hover:bg-slate-50 peer-checked:bg-rose-500 peer-checked:text-white peer-checked:shadow-md">
+                      <i class="fa-solid fa-circle-xmark text-rose-500 text-xs"></i> ไม่ปฏิบัติ
+                    </div>
+                  </label>
+                  <label class="flex-1">
+                    <input type="radio" name="q5" value="N/A" class="sr-only peer">
+                    <div class="flex items-center justify-center gap-1.5 py-2.5 rounded-xl font-bold text-[11px] text-slate-500 cursor-pointer transition-all hover:bg-slate-50 peer-checked:bg-slate-500 peer-checked:text-white peer-checked:shadow-md">
+                      <i class="fa-solid fa-circle-minus text-slate-400 text-xs"></i> N/A
+                    </div>
+                  </label>
+                </div>
+                <div class="mt-2">
+                  <input type="text" id="q5_note" name="q5_note" placeholder="✍️ ระบุรายละเอียดเพิ่มเติม..." class="w-full p-2.5 text-xs border border-slate-200 rounded-xl bg-white focus:outline-none focus:ring-2 focus:ring-teal-400 text-slate-700 shadow-sm placeholder:text-slate-400">
+                </div>
+              </div>
+
+              <!-- ข้อ 6 -->
+              <div class="bg-slate-50/30 p-3.5 rounded-2xl border border-slate-100 hover:border-teal-200 transition-all">
+                <p class="font-bold text-slate-800 text-sm mb-1">6. ไม่เปลี่ยนสายสวนปัสสาวะเป็น Routine</p>
+                <p class="text-xs text-slate-400 mb-2.5">(เปลี่ยนเมื่อมีการรั่วซึมหรืออุดตัน โดยต้องทำการเปลี่ยนทั้งชุดสวนปัสสาวะ)</p>
+                <div class="flex rounded-2xl bg-slate-100 p-1 border border-slate-200 gap-1 select-none">
+                  <label class="flex-1">
+                    <input type="radio" name="q6" value="ปฏิบัติ" checked required class="sr-only peer">
+                    <div class="flex items-center justify-center gap-1.5 py-2.5 rounded-xl font-bold text-[11px] text-slate-500 cursor-pointer transition-all hover:bg-slate-50 peer-checked:bg-emerald-500 peer-checked:text-white peer-checked:shadow-md">
+                      <i class="fa-solid fa-circle-check text-emerald-500 text-xs"></i> ปฏิบัติ
+                    </div>
+                  </label>
+                  <label class="flex-1">
+                    <input type="radio" name="q6" value="ไม่ปฏิบัติ" class="sr-only peer">
+                    <div class="flex items-center justify-center gap-1.5 py-2.5 rounded-xl font-bold text-[11px] text-slate-500 cursor-pointer transition-all hover:bg-slate-50 peer-checked:bg-rose-500 peer-checked:text-white peer-checked:shadow-md">
+                      <i class="fa-solid fa-circle-xmark text-rose-500 text-xs"></i> ไม่ปฏิบัติ
+                    </div>
+                  </label>
+                  <label class="flex-1">
+                    <input type="radio" name="q6" value="N/A" class="sr-only peer">
+                    <div class="flex items-center justify-center gap-1.5 py-2.5 rounded-xl font-bold text-[11px] text-slate-500 cursor-pointer transition-all hover:bg-slate-50 peer-checked:bg-slate-500 peer-checked:text-white peer-checked:shadow-md">
+                      <i class="fa-solid fa-circle-minus text-slate-400 text-xs"></i> N/A
+                    </div>
+                  </label>
+                </div>
+                <div class="mt-2">
+                  <input type="text" id="q6_note" name="q6_note" placeholder="✍️ ระบุรายละเอียดเพิ่มเติม..." class="w-full p-2.5 text-xs border border-slate-200 rounded-xl bg-white focus:outline-none focus:ring-2 focus:ring-teal-400 text-slate-700 shadow-sm placeholder:text-slate-400">
+                </div>
+              </div>
+
+              <!-- ข้อ 7 -->
+              <div class="bg-slate-50/30 p-3.5 rounded-2xl border border-slate-100 hover:border-teal-200 transition-all">
+                <p class="font-bold text-slate-800 text-sm mb-2.5">7. ทำความสะอาดบริเวณ urethral meatus เช้า – เย็นและหลังถ่ายอุจจาระทุกครั้งด้วย NSS</p>
+                <div class="flex rounded-2xl bg-slate-100 p-1 border border-slate-200 gap-1 select-none">
+                  <label class="flex-1">
+                    <input type="radio" name="q7" value="ปฏิบัติ" checked required class="sr-only peer">
+                    <div class="flex items-center justify-center gap-1.5 py-2.5 rounded-xl font-bold text-[11px] text-slate-500 cursor-pointer transition-all hover:bg-slate-50 peer-checked:bg-emerald-500 peer-checked:text-white peer-checked:shadow-md">
+                      <i class="fa-solid fa-circle-check text-emerald-500 text-xs"></i> ปฏิบัติ
+                    </div>
+                  </label>
+                  <label class="flex-1">
+                    <input type="radio" name="q7" value="ไม่ปฏิบัติ" class="sr-only peer">
+                    <div class="flex items-center justify-center gap-1.5 py-2.5 rounded-xl font-bold text-[11px] text-slate-500 cursor-pointer transition-all hover:bg-slate-50 peer-checked:bg-rose-500 peer-checked:text-white peer-checked:shadow-md">
+                      <i class="fa-solid fa-circle-xmark text-rose-500 text-xs"></i> ไม่ปฏิบัติ
+                    </div>
+                  </label>
+                  <label class="flex-1">
+                    <input type="radio" name="q7" value="N/A" class="sr-only peer">
+                    <div class="flex items-center justify-center gap-1.5 py-2.5 rounded-xl font-bold text-[11px] text-slate-500 cursor-pointer transition-all hover:bg-slate-50 peer-checked:bg-slate-500 peer-checked:text-white peer-checked:shadow-md">
+                      <i class="fa-solid fa-circle-minus text-slate-400 text-xs"></i> N/A
+                    </div>
+                  </label>
+                </div>
+                <div class="mt-2">
+                  <input type="text" id="q7_note" name="q7_note" placeholder="✍️ ระบุรายละเอียดเพิ่มเติม..." class="w-full p-2.5 text-xs border border-slate-200 rounded-xl bg-white focus:outline-none focus:ring-2 focus:ring-teal-400 text-slate-700 shadow-sm placeholder:text-slate-400">
+                </div>
+              </div>
+
+              <!-- ข้อ 8 -->
+              <div class="bg-slate-50/30 p-3.5 rounded-2xl border border-slate-100 hover:border-teal-200 transition-all">
+                <p class="font-bold text-slate-800 text-sm mb-1">8. การเทปัสสาวะทำความสะอาดบริเวณ Urinary drainage tap ด้วย 70% alcohol</p>
+                <p class="text-xs text-slate-400 mb-2.5">(ใช้ภาชนะที่สะอาด หลีกเลี่ยงอย่าให้บริเวณ Urinary drainage tap สัมผัสภาชนะที่รองรับ)</p>
+                <div class="flex rounded-2xl bg-slate-100 p-1 border border-slate-200 gap-1 select-none">
+                  <label class="flex-1">
+                    <input type="radio" name="q8" value="ปฏิบัติ" checked required class="sr-only peer">
+                    <div class="flex items-center justify-center gap-1.5 py-2.5 rounded-xl font-bold text-[11px] text-slate-500 cursor-pointer transition-all hover:bg-slate-50 peer-checked:bg-emerald-500 peer-checked:text-white peer-checked:shadow-md">
+                      <i class="fa-solid fa-circle-check text-emerald-500 text-xs"></i> ปฏิบัติ
+                    </div>
+                  </label>
+                  <label class="flex-1">
+                    <input type="radio" name="q8" value="ไม่ปฏิบัติ" class="sr-only peer">
+                    <div class="flex items-center justify-center gap-1.5 py-2.5 rounded-xl font-bold text-[11px] text-slate-500 cursor-pointer transition-all hover:bg-slate-50 peer-checked:bg-rose-500 peer-checked:text-white peer-checked:shadow-md">
+                      <i class="fa-solid fa-circle-xmark text-rose-500 text-xs"></i> ไม่ปฏิบัติ
+                    </div>
+                  </label>
+                  <label class="flex-1">
+                    <input type="radio" name="q8" value="N/A" class="sr-only peer">
+                    <div class="flex items-center justify-center gap-1.5 py-2.5 rounded-xl font-bold text-[11px] text-slate-500 cursor-pointer transition-all hover:bg-slate-50 peer-checked:bg-slate-500 peer-checked:text-white peer-checked:shadow-md">
+                      <i class="fa-solid fa-circle-minus text-slate-400 text-xs"></i> N/A
+                    </div>
+                  </label>
+                </div>
+                <div class="mt-2">
+                  <input type="text" id="q8_note" name="q8_note" placeholder="✍️ ระบุรายละเอียดเพิ่มเติม..." class="w-full p-2.5 text-xs border border-slate-200 rounded-xl bg-white focus:outline-none focus:ring-2 focus:ring-teal-400 text-slate-700 shadow-sm placeholder:text-slate-400">
+                </div>
+              </div>
+
+            </div>
+
+            <!-- ปุ่มบันทึก -->
+            <div class="pt-2">
+              <button type="submit" class="w-full bg-gradient-to-r from-teal-500 via-emerald-500 to-teal-600 hover:from-teal-600 hover:to-teal-700 text-white font-bold py-3.5 px-6 rounded-2xl shadow-lg shadow-teal-500/25 hover:shadow-teal-500/40 transform active:scale-95 transition-all text-center cursor-pointer">
+                <i class="fa-solid fa-cloud-arrow-up mr-2"></i> บันทึกผลการประเมิน
+              </button>
+            </div>
+          </form>
         </div>
       </div>
 
-    </div>
-
-  </main>
-
-  <!-- FOOTER -->
-  <footer class="bg-slate-800 text-slate-400 text-xs py-6 mt-auto border-t border-slate-700">
-    <div class="max-w-6xl mx-auto px-4 text-center space-y-2">
-      <p>© 2569 งานควบคุมและป้องกันการติดเชื้อในโรงพยาบาล (IC) โรงพยาบาลพุนพิน จังหวัดสุราษฎร์ธานี</p>
-      <p class="text-[10px] text-slate-500"></p>
-    </div>
-  </footer>
-
-  <!-- MODERN NOTIFICATION MODAL (NO ALERT) -->
-  <div id="customModal" class="fixed inset-0 bg-slate-900/60 flex items-center justify-center p-4 z-50 hidden transition-all duration-300">
-    <div class="bg-white rounded-2xl max-w-sm w-full p-6 shadow-2xl transform scale-95 opacity-0 transition-all duration-300" id="modalCard">
-      <div class="flex flex-col items-center text-center space-y-4">
-        <!-- Success Icon Area -->
-        <div id="modalIconSuccess" class="hidden p-3 bg-emerald-100 text-emerald-600 rounded-full">
-          <svg class="w-10 h-10" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7"></path></svg>
-        </div>
-        <!-- Error Icon Area -->
-        <div id="modalIconError" class="hidden p-3 bg-rose-100 text-rose-600 rounded-full">
-          <svg class="w-10 h-10" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M6 18L18 6M6 6l12 12"></path></svg>
-        </div>
-        <!-- Info Icon Area -->
-        <div id="modalIconInfo" class="hidden p-3 bg-pink-100 text-pink-600 rounded-full">
-          <svg class="w-10 h-10" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
-        </div>
-
-        <div class="space-y-1">
-          <h3 class="text-lg font-bold text-slate-800" id="modalTitle">หัวข้อการทำงาน</h3>
-          <p class="text-sm text-slate-500" id="modalMessage">คำอธิบายรายละเอียดการทำงาน...</p>
-        </div>
-
-        <button onclick="closeModal()" class="w-full py-2.5 bg-slate-800 hover:bg-slate-900 text-white font-semibold rounded-xl text-sm transition-all focus:outline-none">
-          ตกลง
-        </button>
-      </div>
-    </div>
-  </div>
-
-  <!-- MODERN CONFIRMATION MODAL (NO CONFIRM) -->
-  <div id="customConfirmModal" class="fixed inset-0 bg-slate-900/60 flex items-center justify-center p-4 z-50 hidden transition-all duration-300">
-    <div class="bg-white rounded-2xl max-w-sm w-full p-6 shadow-2xl transform scale-95 opacity-0 transition-all duration-300" id="confirmModalCard">
-      <div class="flex flex-col items-center text-center space-y-4">
-        <div class="p-3 bg-amber-100 text-amber-600 rounded-full">
-          <svg class="w-10 h-10" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path></svg>
-        </div>
-
-        <div class="space-y-1">
-          <h3 class="text-lg font-bold text-slate-800" id="confirmModalTitle">ต้องการยืนยันหรือไม่?</h3>
-          <p class="text-sm text-slate-500" id="confirmModalMessage">คำเตือนเกี่ยวกับสิ่งที่จะทำ...</p>
-        </div>
-
-        <div class="grid grid-cols-2 gap-3 w-full">
-          <button id="confirmCancelBtn" onclick="closeConfirmModal()" class="py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold rounded-xl text-sm transition-all">
-            ยกเลิก
-          </button>
-          <button id="confirmProceedBtn" class="py-2.5 bg-rose-600 hover:bg-rose-700 text-white font-semibold rounded-xl text-sm transition-all shadow-md">
-            ยืนยัน
-          </button>
-        </div>
-      </div>
-    </div>
-  </div>
-
-  <!-- JAVASCRIPT LOGIC -->
-  <script>
-    // ==========================================
-    // ⚙️ ตัวตั้งค่าส่วนกลาง
-    // ==========================================
-    const GLOBAL_DEFAULT_API_URL = "https://script.google.com/macros/s/AKfycbxu25AyFLUlqiKsK4h6kH4qPuyeXrGliMaacUrXFx0Ya6yZEvPjd6hMYTSqfvA2KjYy/exec"; 
-
-    let db = {
-      records: JSON.parse(localStorage.getItem('cauti_records')) || [],
-      apiUrl: localStorage.getItem('cauti_api_url') || GLOBAL_DEFAULT_API_URL
-    };
-
-    let comparisonChartInstance = null;
-    let trendChartInstance = null;
-    let currentFilterType = 'all';
-    let currentRecord = { id: '', date: '', items: { 1: null, 2: null, 3: null, 4: null, 5: null, 6: null, 7: null, 8: null }, complianceRate: 0, remarks: '', synced: false, timestamp: null };
-    let activeConfirmCallback = null;
-
-    // ==========================================
-    // ฟังก์ชันดึงข้อมูลอัตโนมัติ
-    // ==========================================
-    async function fetchDataFromSheet() {
-      if (!db.apiUrl) return false;
-      try {
-        const response = await fetch(db.apiUrl + "?action=fetch", { method: 'GET' });
-        const data = await response.json();
-        if (data && Array.isArray(data) && data.length > 0) {
-          // รวมข้อมูลจาก Sheet กับ LocalStorage (ป้องกันข้อมูลซ้ำด้วย id)
-          const sheetIds = new Set(data.map(r => r.id));
-          const localOnly = db.records.filter(r => !sheetIds.has(r.id));
-          db.records = [...data, ...localOnly];
-          localStorage.setItem('cauti_records', JSON.stringify(db.records));
-          console.log(`อัปเดตข้อมูลจาก Google Sheets สำเร็จ (${data.length} รายการ)`);
-          return true;
-        }
-        return false;
-      } catch (err) {
-        console.error("ไม่สามารถดึงข้อมูลอัตโนมัติได้:", err);
-        return false;
-      }
-    }
-
-    // ดึงข้อมูลจาก Google Sheet แล้ว render Dashboard พร้อม loading indicator
-    async function fetchAndRenderReports() {
-      const reportsTab = document.getElementById('tab-reports-content');
-
-      // แสดง Loading overlay ใน dashboard
-      let loadingEl = document.getElementById('dashboardLoadingOverlay');
-      if (!loadingEl) {
-        loadingEl = document.createElement('div');
-        loadingEl.id = 'dashboardLoadingOverlay';
-        loadingEl.className = 'flex items-center justify-center py-16 space-x-3 text-pink-600';
-        loadingEl.innerHTML = `
-          <svg class="animate-spin w-6 h-6" fill="none" viewBox="0 0 24 24">
-            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path>
-          </svg>
-          <span class="font-semibold text-sm">กำลังโหลดข้อมูลจาก Google Sheets...</span>
-        `;
-        reportsTab.prepend(loadingEl);
-      }
-      loadingEl.classList.remove('hidden');
-
-      // Render ข้อมูลเก่าก่อน (ถ้ามี)
-      renderReports();
-
-      // ดึงข้อมูลใหม่จาก Sheet
-      const success = await fetchDataFromSheet();
-
-      // ซ่อน loading
-      loadingEl.classList.add('hidden');
-
-      // Render ใหม่ด้วยข้อมูลล่าสุด
-      renderReports();
-      renderHistory();
-
-      if (success) {
-        // แสดงป้ายแจ้งอัปเดตสำเร็จชั่วคราว
-        const badge = document.getElementById('connectionBadge');
-        const prev = badge.innerHTML;
-        badge.innerHTML = `<span class="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-ping"></span><span class="hidden md:inline font-medium">อัปเดตแล้ว ✓</span>`;
-        setTimeout(() => { badge.innerHTML = prev; }, 2500);
-      }
-    }
-
-    // Initial load
-    window.onload = function() {
-      const today = new Date().toISOString().split('T')[0];
-      document.getElementById('evalDate').value = today;
-      currentRecord.date = today;
-      document.getElementById('filterMonthVal').value = today.slice(0, 7);
-      document.getElementById('filterStartVal').value = today;
-      document.getElementById('filterEndVal').value = today;
-      if (db.apiUrl) document.getElementById('apiEndpointUrl').value = db.apiUrl;
-
-      // เรียกฟังก์ชันดึงข้อมูลทันทีเมื่อเปิดหน้าเว็บ (background)
-      fetchDataFromSheet().then(() => {
-        renderHistory();
-        renderReports();
-      });
-
-      updateUnsyncedBadge();
-      updateStatusBadge();
-      renderHistory();
-      renderReports();
-    };
-
-    // Tab switcher
-    function switchTab(tabName) {
-      document.querySelectorAll('.tab-btn').forEach(btn => {
-        btn.classList.remove('border-pink-600', 'text-pink-600', 'font-semibold');
-        btn.classList.add('border-transparent', 'text-slate-500');
-      });
-      document.querySelectorAll('.tab-content').forEach(content => {
-        content.classList.add('hidden');
-      });
-
-      document.getElementById(`btn-${tabName}`).classList.add('border-pink-600', 'text-pink-600', 'font-semibold');
-      document.getElementById(`btn-${tabName}`).classList.remove('border-transparent', 'text-slate-500');
-      document.getElementById(`tab-${tabName}-content`).classList.remove('hidden');
-
-      if (tabName === 'history') {
-        renderHistory();
-      } else if (tabName === 'reports') {
-        // ดึงข้อมูลจาก Google Sheet อัตโนมัติทุกครั้งที่เปิด Dashboard
-        fetchAndRenderReports();
-      }
-    }
-
-    // Modal Notification helpers (Instead of browser alerts)
-    function showModal(title, msg, type = 'info') {
-      const modal = document.getElementById('customModal');
-      const card = document.getElementById('modalCard');
-      
-      document.getElementById('modalTitle').innerText = title;
-      document.getElementById('modalMessage').innerText = msg;
-
-      // Reset icon classes
-      document.getElementById('modalIconSuccess').classList.add('hidden');
-      document.getElementById('modalIconError').classList.add('hidden');
-      document.getElementById('modalIconInfo').classList.add('hidden');
-
-      if (type === 'success') {
-        document.getElementById('modalIconSuccess').classList.remove('hidden');
-      } else if (type === 'error') {
-        document.getElementById('modalIconError').classList.remove('hidden');
-      } else {
-        document.getElementById('modalIconInfo').classList.remove('hidden');
-      }
-
-      // Show
-      modal.classList.remove('hidden');
-      setTimeout(() => {
-        card.classList.remove('scale-95', 'opacity-0');
-        card.classList.add('scale-100', 'opacity-100');
-      }, 50);
-    }
-
-    function closeModal() {
-      const modal = document.getElementById('customModal');
-      const card = document.getElementById('modalCard');
-
-      card.classList.remove('scale-100', 'opacity-100');
-      card.classList.add('scale-95', 'opacity-0');
-
-      setTimeout(() => {
-        modal.classList.add('hidden');
-      }, 200);
-    }
-
-    // Custom Confirmation Modal
-    function showConfirmModal(title, msg, onConfirm, isDangerous = true) {
-      const modal = document.getElementById('customConfirmModal');
-      const card = document.getElementById('confirmModalCard');
-      const proceedBtn = document.getElementById('confirmProceedBtn');
-
-      document.getElementById('confirmModalTitle').innerText = title;
-      document.getElementById('confirmModalMessage').innerText = msg;
-
-      if (isDangerous) {
-        proceedBtn.className = "py-2.5 bg-rose-600 hover:bg-rose-700 text-white font-semibold rounded-xl text-sm transition-all shadow-md";
-      } else {
-        proceedBtn.className = "py-2.5 bg-pink-600 hover:bg-pink-700 text-white font-semibold rounded-xl text-sm transition-all shadow-md";
-      }
-
-      activeConfirmCallback = onConfirm;
-
-      modal.classList.remove('hidden');
-      setTimeout(() => {
-        card.classList.remove('scale-95', 'opacity-0');
-        card.classList.add('scale-100', 'opacity-100');
-      }, 50);
-    }
-
-    function closeConfirmModal() {
-      const modal = document.getElementById('customConfirmModal');
-      const card = document.getElementById('confirmModalCard');
-
-      card.classList.remove('scale-100', 'opacity-100');
-      card.classList.add('scale-95', 'opacity-0');
-
-      setTimeout(() => {
-        modal.classList.add('hidden');
-        activeConfirmCallback = null;
-      }, 200);
-    }
-
-    // Bind Confirm Button
-    document.getElementById('confirmProceedBtn').addEventListener('click', () => {
-      if (typeof activeConfirmCallback === 'function') {
-        activeConfirmCallback();
-      }
-      closeConfirmModal();
-    });
-
-    // Set item compliance value - FIXED ACTIVE/INACTIVE SELECTION BUG
-    function setItemValue(itemNum, value) {
-      currentRecord.items[itemNum] = value;
-      
-      // Visual feedback
-      const card = document.querySelector(`.card-bundle-item[data-index="${itemNum}"]`);
-      const yesBtn = card.querySelector('.btn-check-yes');
-      const noBtn = card.querySelector('.btn-check-no');
-
-      if (value === 'ปฏิบัติ') {
-        // Yes selected - Active green border and pulsing green dot
-        yesBtn.className = "btn-check-yes w-24 py-2 rounded-xl border-2 border-emerald-500 bg-emerald-50 font-bold text-emerald-700 transition-all text-sm flex items-center justify-center space-x-1 shadow-sm";
-        yesBtn.querySelector('.icon-dot').className = "icon-dot w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse";
+      <!-- ฝั่งขวา: รายงาน Dashboard และสถิติแนวโน้ม (7 คอลัมน์) -->
+      <div class="lg:col-span-7 flex flex-col gap-6">
         
-        // No unselected - Quiet gray slate border and solid gray dot
-        noBtn.className = "btn-check-no w-28 py-2 rounded-xl border border-slate-200 font-semibold text-slate-500 hover:bg-slate-50 transition-all text-sm flex items-center justify-center space-x-1";
-        noBtn.querySelector('.icon-dot').className = "icon-dot w-2 h-2 rounded-full bg-slate-300";
-      } else if (value === 'ไม่ปฏิบัติ') {
-        // Yes unselected - Quiet gray slate border and solid gray dot
-        yesBtn.className = "btn-check-yes w-24 py-2 rounded-xl border border-slate-200 font-semibold text-slate-400 hover:bg-slate-50 transition-all text-sm flex items-center justify-center space-x-1";
-        yesBtn.querySelector('.icon-dot').className = "icon-dot w-2 h-2 rounded-full bg-slate-300";
-        
-        // No selected - Active rose border and pulsing red dot
-        noBtn.className = "btn-check-no w-28 py-2 rounded-xl border-2 border-rose-500 bg-rose-50 font-bold text-rose-700 transition-all text-sm flex items-center justify-center space-x-1 shadow-sm";
-        noBtn.querySelector('.icon-dot').className = "icon-dot w-2.5 h-2.5 rounded-full bg-rose-500 animate-pulse";
-      }
+        <!-- แถบควบคุมและตัวกรองรายงานอัจฉริยะ (Year / Month / Date Range Filter) -->
+        <div class="bg-white/90 backdrop-blur-md p-5 rounded-3xl border border-slate-100 shadow-lg">
+          <div class="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-3">
+            <h3 class="font-bold text-sm text-slate-700 flex items-center gap-2">
+              <i class="fa-solid fa-filter text-teal-600 animate-pulse"></i>
+              ตัวกรองข้อมูลรายงานใน Dashboard
+            </h3>
+            <!-- ปุ่มสลับโหมดฟิลเตอร์ข้อมูล -->
+            <div class="flex flex-wrap gap-1 bg-slate-100 p-1 rounded-2xl text-[11px] font-extrabold border border-slate-200">
+              <button type="button" onclick="setFilterMode('all')" id="filterModeAll" class="px-3 py-1.5 rounded-xl transition-all bg-white text-teal-700 shadow-sm cursor-pointer">ทั้งหมด</button>
+              <button type="button" onclick="setFilterMode('year')" id="filterModeYear" class="px-3 py-1.5 rounded-xl transition-all text-slate-600 hover:text-slate-900 cursor-pointer">รายปี</button>
+              <button type="button" onclick="setFilterMode('month')" id="filterModeMonth" class="px-3 py-1.5 rounded-xl transition-all text-slate-600 hover:text-slate-900 cursor-pointer">รายเดือน</button>
+              <button type="button" onclick="setFilterMode('range')" id="filterModeRange" class="px-3 py-1.5 rounded-xl transition-all text-slate-600 hover:text-slate-900 cursor-pointer">ระบุช่วงวันที่</button>
+            </div>
+          </div>
+          
+          <!-- ช่องเลือกข้อมูลตามตัวเลือกโหมดการกรอง -->
+          <div id="filterInputsArea" class="hidden grid grid-cols-1 sm:grid-cols-2 gap-4 pt-3 border-t border-slate-100">
+            
+            <!-- ตัวเลือกปี -->
+            <div id="filterYearGroup" class="hidden">
+              <label class="block text-xs font-bold text-slate-500 mb-1.5">เลือกปี (พ.ศ.)</label>
+              <select id="filterYearSelect" onchange="applyFilters()" class="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-bold text-slate-700 focus:outline-none focus:ring-2 focus:ring-teal-400"></select>
+            </div>
+            
+            <!-- ตัวเลือกเดือน -->
+            <div id="filterMonthGroup" class="hidden">
+              <label class="block text-xs font-bold text-slate-500 mb-1.5">เลือกช่วงเดือน</label>
+              <input type="month" id="filterMonthInput" onchange="applyFilters()" class="w-full p-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-bold text-slate-700 focus:outline-none focus:ring-2 focus:ring-teal-400">
+            </div>
+            
+            <!-- ตัวเลือกช่วงเริ่มต้น - สิ้นสุดวันที่ -->
+            <div id="filterRangeGroup" class="hidden col-span-2 grid grid-cols-2 gap-4">
+              <div>
+                <label class="block text-xs font-bold text-slate-500 mb-1.5"><i class="fa-solid fa-calendar-minus mr-1 text-slate-400"></i> จากวันที่</label>
+                <input type="date" id="filterStartDate" onchange="applyFilters()" class="w-full p-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-bold text-slate-700 focus:outline-none focus:ring-2 focus:ring-teal-400">
+              </div>
+              <div>
+                <label class="block text-xs font-bold text-slate-500 mb-1.5"><i class="fa-solid fa-calendar-plus mr-1 text-slate-400"></i> ถึงวันที่</label>
+                <input type="date" id="filterEndDate" onchange="applyFilters()" class="w-full p-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-bold text-slate-700 focus:outline-none focus:ring-2 focus:ring-teal-400">
+              </div>
+            </div>
 
-      calculateLiveScore();
-    }
+          </div>
+        </div>
 
-   // ปรับแก้เฉพาะฟังก์ชัน calculateLiveScore
-function calculateLiveScore() {
-  let totalAssessed = 0;
-  let totalYes = 0;
+        <!-- แถบประเมินตัวเลขสรุปรวมหลัก (แสดงจำนวนใบประเมินที่ทำทั้งหมด) -->
+        <div class="w-full">
+          <div class="bg-white/90 backdrop-blur-md p-6 rounded-3xl border border-slate-100 shadow-lg flex items-center justify-between gap-4">
+            <div class="flex items-center gap-4">
+              <div class="w-14 h-14 rounded-2xl bg-teal-50 text-teal-600 flex items-center justify-center text-2xl">
+                <i class="fa-solid fa-clipboard-list"></i>
+              </div>
+              <div>
+                <p class="text-xs text-slate-400 font-bold uppercase">จำนวนใบประเมินที่ทำ (ข้อมูลคัดกรอง)</p>
+                <p id="statTotal" class="text-3xl font-extrabold text-slate-800">0 ใบ</p>
+              </div>
+            </div>
+            <div class="text-right hidden sm:block">
+              <span class="text-xs text-slate-400 font-bold bg-slate-100 text-slate-600 px-3 py-1.5 rounded-full">โรงพยาบาลพุนพิน</span>
+            </div>
+          </div>
+        </div>
 
-  for (let key in currentRecord.items) {
-    if (currentRecord.items[key] !== null) {
-      totalAssessed++;
-      if (currentRecord.items[key] === 'ปฏิบัติ') {
-        totalYes++;
-      }
-    }
+        <!-- แท็บสลับหน้าเพื่อดู กราฟเปรียบเทียบ / กราฟแนวโน้ม / ประวัติข้อมูล / การตั้งค่าชีต -->
+        <div class="bg-white/90 backdrop-blur-md rounded-[2rem] shadow-xl border border-slate-100 p-6 flex-1 flex flex-col">
+          <div class="flex flex-wrap items-center justify-between gap-4 border-b pb-4 border-slate-100 mb-6 font-semibold">
+            <div class="flex flex-wrap gap-2">
+              <button onclick="changeDashboardTab('bar')" id="tabBtnBar" class="px-4 py-2 rounded-xl text-xs font-bold bg-teal-600 text-white transition-all cursor-pointer shadow">
+                <i class="fa-solid fa-chart-bar mr-1"></i> สรุปรายข้อ (%)
+              </button>
+              <button onclick="changeDashboardTab('trend')" id="tabBtnTrend" class="px-4 py-2 rounded-xl text-xs font-bold bg-slate-100 text-slate-600 hover:bg-slate-200 transition-all cursor-pointer">
+                <i class="fa-solid fa-chart-line mr-1"></i> ดูกราฟ Trend แนวโน้ม
+              </button>
+              <button onclick="changeDashboardTab('history')" id="tabBtnHistory" class="px-4 py-2 rounded-xl text-xs font-bold bg-slate-100 text-slate-600 hover:bg-slate-200 transition-all cursor-pointer">
+                <i class="fa-solid fa-list-check mr-1"></i> ประวัติประเมิน
+              </button>
+              <button onclick="changeDashboardTab('setting')" id="tabBtnSetting" class="px-4 py-2 rounded-xl text-xs font-bold bg-indigo-50 text-indigo-600 hover:bg-indigo-100 transition-all cursor-pointer">
+                <i class="fa-solid fa-gears mr-1"></i> รหัสสคริปต์ Code.gs
+              </button>
+            </div>
+
+            <!-- ปุ่มเคลียร์ข้อมูลทั้งหมด -->
+            <button id="btnResetDatabase" onclick="confirmResetAll()" class="text-xs font-bold text-rose-600 hover:bg-rose-50 border border-rose-200 px-3 py-1.5 rounded-xl transition-all cursor-pointer hidden">
+              <i class="fa-solid fa-trash-can mr-1"></i> ล้างข้อมูลจำลอง
+            </button>
+          </div>
+
+          <!-- พื้นที่แสดงรายงาน Dashboard -->
+          <div class="relative w-full flex-1 min-h-[350px] flex flex-col justify-center">
+            
+            <!-- 1. กราฟเปรียบเทียบแท่งรายข้อ (ปฏิบัติ / ไม่ปฏิบัติ) -->
+            <div id="panelBar" class="w-full h-full">
+              <div class="relative w-full h-[320px]">
+                <canvas id="cautiBarChart"></canvas>
+              </div>
+            </div>
+
+            <!-- 2. กราฟเส้นแนวโน้ม Trend (ตามวันเวลา) -->
+            <div id="panelTrend" class="w-full h-full hidden">
+              <div class="relative w-full h-[320px]">
+                <canvas id="cautiTrendChart"></canvas>
+              </div>
+            </div>
+
+            <!-- 3. ประวัติและบันทึกประเมินตารางข้อมูล -->
+            <div id="panelHistory" class="w-full h-[320px] overflow-y-auto hidden custom-scroll">
+              <div class="flex items-center gap-2 mb-4 bg-slate-50 p-2.5 rounded-xl border border-slate-100">
+                <i class="fa-solid fa-magnifying-glass text-slate-400 text-sm ml-1"></i>
+                <input type="text" id="historySearch" oninput="filterHistoryTable()" placeholder="ค้นหาด้วยวันที่ประเมิน (เช่น 2026-06)..." class="w-full bg-transparent focus:outline-none text-xs text-slate-700">
+              </div>
+              <div class="overflow-x-auto w-full">
+                <table class="w-full text-left border-collapse text-xs">
+                  <thead>
+                    <tr class="bg-slate-100/80 text-slate-600 font-bold border-b border-slate-200">
+                      <th class="p-3">วันที่ประเมิน</th>
+                      <th class="p-3 text-center">ปฏิบัติ (ข้อ)</th>
+                      <th class="p-3 text-center font-extrabold text-teal-600">อัตราส่วนการผ่าน (%)</th>
+                      <th class="p-3 text-right">การจัดการ</th>
+                    </tr>
+                  </thead>
+                  <tbody id="historyTableBody" class="divide-y divide-slate-100">
+                    <!-- ประวัติประเมินจะเพิ่มเข้ามาที่นี่ -->
+                  </tbody>
+                </table>
+              </div>
+              <div id="noDataAlert" class="text-center py-12 text-slate-400">
+                <i class="fa-solid fa-folder-open text-4xl mb-3 text-slate-300"></i>
+                <p class="text-sm">ไม่มีประวัติการประเมินในระบบ</p>
+              </div>
+            </div>
+
+            <!-- 4. แนะนำวิธีติดตั้ง Google Sheet และโค้ด Code.gs (ฝังรหัส Google Sheet ของคุณแบบถาวร) -->
+            <div id="panelSetting" class="w-full h-full hidden flex flex-col justify-between">
+              <div class="space-y-4 text-xs text-slate-600 max-h-[300px] overflow-y-auto pr-2 custom-scroll">
+                <div class="bg-indigo-50/50 p-4 rounded-2xl border border-indigo-100">
+                  <h3 class="font-bold text-sm text-indigo-800 mb-2">⚡ วิธีเชื่อมโยงระบบกับ Google Sheet "cauti - Google ชีต"</h3>
+                  <p class="mb-2 leading-relaxed text-slate-700">เราได้ทำการฝังไอดี Google Sheet ปลายทาง <strong>"1yOPzmyd7ExMELRpwltyPu7onH5dCwpjZUPs5IP2JqQ4"</strong> และชี้พิกัดไปที่แท็บชีตตารางชื่อ <strong>"CAUTi"</strong> ลงในสคริปต์นี้เรียบร้อยแล้ว!</p>
+                  <ol class="list-decimal list-inside space-y-1.5 leading-relaxed text-slate-700">
+                    <li>เปิดหน้าสเปรดชีตของคุณขึ้นมา</li>
+                    <li>ที่แถบเมนูด้านบน คลิก <strong>"ส่วนขยาย (Extensions)"</strong> &gt; <strong>"Apps Script"</strong></li>
+                    <li>ลบโค้ดเดิมในไฟล์ <code class="bg-indigo-100 px-1 rounded font-mono text-indigo-700">Code.gs</code> ออกทั้งหมด</li>
+                    <li>คัดลอกโค้ดกล่องสีดำด้านล่างนี้ไปวางแทนที่ทั้งหมด และกดปุ่มเซฟ</li>
+                    <li>คลิกปุ่ม <strong>"การทำให้ใช้งานได้ใหม่ (New Deployment)"</strong> เลือกประเภทเป็น <strong>"เว็บแอป (Web app)"</strong></li>
+                    <li>ตั้งค่าสิทธิ์ผู้เข้าใช้งานให้เลือกเป็น <strong>"ทุกคน (Anyone)"</strong> เพื่อให้ผู้ใช้เปิดผ่านมือถือโดยไม่ต้องล็อกอินบัญชีก่อนได้สะดวก</li>
+                    <li>กด Deploy และคัดลอกลิงก์มาใช้เปิดรันแอปได้ทันที</li>
+                  </ol>
+                </div>
+
+                <div class="relative">
+                  <div class="absolute right-2 top-2 z-10">
+                    <button onclick="copyAppsScriptCode()" class="bg-slate-800 hover:bg-slate-700 text-white font-bold py-1.5 px-3 rounded-lg flex items-center gap-1.5 transition-all cursor-pointer">
+                      <i class="fa-solid fa-copy"></i> คัดลอกโค้ด Code.gs
+                    </button>
+                  </div>
+                  <pre class="bg-slate-900 text-slate-200 p-4 rounded-2xl font-mono text-[10px] overflow-x-auto select-all max-h-[200px]" id="gasCodeText">
+const SPREADSHEET_ID = "1yOPzmyd7ExMELRpwltyPu7onH5dCwpjZUPs5IP2JqQ4";
+const SHEET_NAME = "CAUTi";
+
+function doGet() {
+  return HtmlService.createHtmlOutputFromFile('Index')
+      .setTitle('CAUTI Care Bundle Checklist - พุนพิน')
+      .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL)
+      .addMetaTag('viewport', 'width=device-width, initial-scale=1');
+}
+
+function getTargetSheet() {
+  var ss = SpreadsheetApp.openById(SPREADSHEET_ID);
+  var sheet = ss.getSheetByName(SHEET_NAME);
+  if (!sheet) {
+    sheet = ss.insertSheet(SHEET_NAME);
   }
+  return sheet;
+}
 
-  // คำนวณเปอร์เซ็นต์โดยใช้ฐาน 8 ตามที่คุณต้องการ
-  // (หากต้องการให้คิด 100% ต่อเมื่อครบ 8 ข้อ ให้ใช้ totalAssessed เป็นตัวหาร แต่ถ้าต้องการให้เป็นคะแนนจาก 8 ข้อเสมอ ให้ใช้ 8)
-  const score = Math.round((totalYes / 8) * 100); 
-  currentRecord.complianceRate = score;
-
-  document.getElementById('liveScoreText').innerText = `${score}%`;
-  const ring = document.getElementById('scoreIndicatorRing');
-  
-  // ปรับการแสดงผลเลขตรงกลางเป็น [จำนวนที่ปฏิบัติ] / 8
-  ring.innerText = `${totalYes}/8`;
-
-  // Colorize the ring & badge (Pink Accent scale)
-  // ... (ส่วนโค้ดการเปลี่ยนสีที่เหลือคงเดิม) ...
-  if (score === 100 && totalYes === 8) {
-    ring.className = "w-10 h-10 rounded-full border-2 border-pink-300 bg-pink-700 flex items-center justify-center font-bold text-sm text-white shadow-md shadow-pink-200";
-  } else if (score >= 80 && totalYes > 0) {
-    ring.className = "w-10 h-10 rounded-full border-2 border-rose-300 bg-rose-600 flex items-center justify-center font-bold text-sm text-white";
-  } else if (score > 0 && totalYes > 0) {
-    ring.className = "w-10 h-10 rounded-full border-2 border-amber-300 bg-amber-600 flex items-center justify-center font-bold text-sm text-white";
-  } else {
-    ring.className = "w-10 h-10 rounded-full border-2 border-slate-300 flex items-center justify-center font-bold text-sm";
+// บันทึกข้อมูลและคอลัมน์รายละเอียดหมายเหตุลง Google Sheet
+function saveData(formData) {
+  try {
+    var sheet = getTargetSheet();
+    if (sheet.getLastRow() === 0) {
+      sheet.appendRow([
+        "Timestamp", "วันที่ประเมิน", 
+        "1. ประเมินความจำเป็น - ผลการปฏิบัติ", "1. รายละเอียด/หมายเหตุ",
+        "2. ใช้ hand hygiene - ผลการปฏิบัติ", "2. รายละเอียด/หมายเหตุ",
+        "3. close system - ผลการปฏิบัติ", "3. รายละเอียด/หมายเหตุ",
+        "4. อยู่ในตำแหน่งที่เหมาะสม - ผลการปฏิบัติ", "4. รายละเอียด/หมายเหตุ",
+        "5. ถุงต่ำกว่ากระเพาะ - ผลการปฏิบัติ", "5. รายละเอียด/หมายเหตุ",
+        "6. ไม่เปลี่ยนสาย Routine - ผลการปฏิบัติ", "6. รายละเอียด/หมายเหตุ",
+        "7. ทำความสะอาด urethral meatus - ผลการปฏิบัติ", "7. รายละเอียด/หมายเหตุ",
+        "8. การเทปัสสาวะปลอดเชื้อ - ผลการปฏิบัติ", "8. รายละเอียด/หมายเหตุ"
+      ]);
+    }
+    sheet.appendRow([
+      new Date(),
+      formData.evalDate,
+      formData.q1, formData.q1_note,
+      formData.q2, formData.q2_note,
+      formData.q3, formData.q3_note,
+      formData.q4, formData.q4_note,
+      formData.q5, formData.q5_note,
+      formData.q6, formData.q6_note,
+      formData.q7, formData.q7_note,
+      formData.q8, formData.q8_note
+    ]);
+    return "บันทึกสถิติลงระบบคลาวด์พุนพินเรียบร้อย!";
+  } catch(e) {
+    return "ข้อผิดพลาดระบบหลังบ้าน: " + e.toString();
   }
 }
 
-    // Sync state badge
-    function updateStatusBadge() {
-      const badge = document.getElementById('connectionBadge');
-      if (db.apiUrl) {
-        badge.innerHTML = `
-          <span class="w-2.5 h-2.5 rounded-full bg-emerald-400"></span>
-          <span class="hidden md:inline font-medium">พร้อมซิงค์คลาวด์</span>
-        `;
-        badge.className = "flex items-center space-x-1 px-3 py-1 bg-emerald-900 bg-opacity-40 rounded-full text-xs text-emerald-100";
-      } else {
-        badge.innerHTML = `
-          <span class="w-2.5 h-2.5 rounded-full bg-amber-400"></span>
-          <span class="hidden md:inline font-medium">ออฟไลน์อย่างเดียว</span>
-        `;
-        badge.className = "flex items-center space-x-1 px-3 py-1 bg-amber-900 bg-opacity-40 rounded-full text-xs text-amber-100";
-      }
-    }
-
-    // Save configuration settings
-    function saveSettings() {
-      const urlInput = document.getElementById('apiEndpointUrl').value.trim();
-      db.apiUrl = urlInput || GLOBAL_DEFAULT_API_URL;
-      localStorage.setItem('cauti_api_url', urlInput);
-      
-      updateStatusBadge();
-      showModal("สำเร็จ", "บันทึกการตั้งค่าลิงก์ Google Apps Script สำเร็จแล้ว", "success");
-    }
-
-    // Test endpoint ping
-    function testApiConnection() {
-      const url = document.getElementById('apiEndpointUrl').value.trim() || db.apiUrl;
-      if (!url) {
-        showModal("เกิดข้อผิดพลาด", "กรุณาระบุ URL ของ Google Apps Script ก่อนเริ่มทดสอบ", "error");
-        return;
-      }
-
-      showModal("กำลังดำเนินการ", "กำลังทดสอบเชื่อมต่อ API...", "info");
-
-      fetch(url, {
-        method: 'POST',
-        mode: 'no-cors', 
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ action: "ping" })
-      })
-      .then(() => {
-        showModal("เชื่อมต่อสำเร็จ", "แอปพลิเคชันสามารถส่งสัญญาณไปยัง Google Apps Script ได้เรียบร้อย", "success");
-      })
-      .catch((err) => {
-        showModal("เชื่อมต่อไม่สำเร็จ", "เกิดข้อผิดพลาด: " + err.toString(), "error");
+// ดึงข้อมูลทั้งหมดมาวิเคราะห์บน Dashboard
+function getData() {
+  try {
+    var sheet = getTargetSheet();
+    if (sheet.getLastRow() <= 1) return { headers: [], rows: [] };
+    var data = sheet.getDataRange().getValues();
+    var headers = data[0];
+    var rows = data.slice(1);
+    
+    var formattedRows = rows.map(function(row) {
+      return row.map(function(cell) {
+        if (cell instanceof Date) {
+          return cell.toISOString().split('T')[0];
+        }
+        return cell;
       });
-    }
-
-    // Submitting bedside evaluation - REMOVED BLOCKED COMPLETE CONDITION
-    function submitAssessment() {
-      // Validate metadata (Only check evalDate)
-      const dateVal = document.getElementById('evalDate').value;
-      const remarksVal = document.getElementById('evalRemarks').value.trim();
-
-      if (!dateVal) {
-        showModal("ข้อมูลไม่ครบถ้วน", "กรุณาระบุวันที่ประเมินให้ครบถ้วน", "error");
-        return;
-      }
-
-      // Build record data object (Allowing partial/null items directly)
-      const recordId = 'REC_' + Date.now() + '_' + Math.floor(Math.random() * 1000);
-      const newRecord = {
-        id: recordId,
-        date: dateVal,
-        items: { ...currentRecord.items },
-        complianceRate: currentRecord.complianceRate,
-        remarks: remarksVal,
-        timestamp: new Date().toISOString(),
-        synced: false
-      };
-
-      // Add to state and LocalStorage
-      db.records.unshift(newRecord);
-      localStorage.setItem('cauti_records', JSON.stringify(db.records));
-
-      updateUnsyncedBadge();
-
-      // Attempt to sync automatically
-      if (db.apiUrl) {
-        showModal("บันทึกสำเร็จ", "บันทึกในเครื่องเรียบร้อยแล้ว กำลังอัปโหลดไปยัง Google Sheet คลาวด์...", "info");
-        syncSingleRecord(newRecord.id, true);
-      } else {
-        showModal("บันทึกข้อมูลเรียบร้อย", "บันทึกข้อมูลแบบออฟไลน์เรียบร้อยแล้ว (สามารถส่งขึ้น Google Sheets ได้จากแท็บ 'ประวัติ & การซิงค์' ภายหลังเมื่อเชื่อมต่ออินเทอร์เน็ต)", "success");
-        resetCurrentForm();
-      }
-    }
-
-    // Reset current checklist interface
-    function resetCurrentForm() {
-      document.getElementById('evalRemarks').value = '';
-
-      currentRecord.items = { 1: null, 2: null, 3: null, 4: null, 5: null, 6: null, 7: null, 8: null };
-      currentRecord.complianceRate = 0;
-      currentRecord.remarks = '';
-
-      // Reset buttons style
-      document.querySelectorAll('.card-bundle-item').forEach(card => {
-        const yesBtn = card.querySelector('.btn-check-yes');
-        const noBtn = card.querySelector('.btn-check-no');
-
-        yesBtn.className = "btn-check-yes w-24 py-2 rounded-xl border border-slate-200 hover:border-pink-500 font-semibold text-slate-500 hover:bg-slate-50 transition-all text-sm flex items-center justify-center space-x-1";
-        yesBtn.querySelector('.icon-dot').className = "icon-dot w-2 h-2 rounded-full bg-slate-300";
-
-        noBtn.className = "btn-check-no w-28 py-2 rounded-xl border border-slate-200 hover:border-rose-500 font-semibold text-slate-500 hover:bg-slate-50 transition-all text-sm flex items-center justify-center space-x-1";
-        noBtn.querySelector('.icon-dot').className = "icon-dot w-2 h-2 rounded-full bg-slate-300";
-      });
-
-      calculateLiveScore();
-    }
-
-    // Sync single record with Exponential Backoff
-    function syncSingleRecord(recordId, isFromActiveForm = false) {
-      const idx = db.records.findIndex(r => r.id === recordId);
-      if (idx === -1) return;
-
-      const record = db.records[idx];
-      if (!db.apiUrl) {
-        if (!isFromActiveForm) {
-          showModal("ตั้งค่าขัดข้อง", "กรุณาตั้งค่า URL สำหรับ Google Apps Script ก่อนการจัดส่ง", "error");
-        }
-        return;
-      }
-
-      // Maintain structure compatibility: Send blank parameters for unselected inputs
-      const payload = {
-        date: record.date,
-        ward: "",
-        shift: "",
-        hn: "",
-        patientName: "",
-        evaluator: "",
-        item1: record.items[1] || "",
-        item2: record.items[2] || "",
-        item3: record.items[3] || "",
-        item4: record.items[4] || "",
-        item5: record.items[5] || "",
-        item6: record.items[6] || "",
-        item7: record.items[7] || "",
-        item8: record.items[8] || "",
-        complianceRate: record.complianceRate,
-        remarks: record.remarks
-      };
-
-      // Exponential Backoff Fetch
-      const fetchWithRetry = (url, data, retries = 5, delay = 1000) => {
-        return fetch(url, {
-          method: 'POST',
-          mode: 'cors',
-          headers: { 'Content-Type': 'text/plain;charset=utf-8' }, 
-          body: JSON.stringify(data)
-        })
-        .then(res => res.json())
-        .then(result => {
-          if (result.status === "success") {
-            return result;
-          } else {
-            throw new Error(result.message || "Failed script processing");
-          }
-        })
-        .catch(err => {
-          if (retries > 1) {
-            return new Promise(resolve => setTimeout(resolve, delay))
-              .then(() => fetchWithRetry(url, data, retries - 1, delay * 2));
-          } else {
-            throw err;
-          }
-        });
-      };
-
-      fetchWithRetry(db.apiUrl, payload)
-        .then(() => {
-          db.records[idx].synced = true;
-          localStorage.setItem('cauti_records', JSON.stringify(db.records));
-          updateUnsyncedBadge();
-          renderHistory();
-
-          if (isFromActiveForm) {
-            showModal("ส่งข้อมูลสำเร็จ", "ประเมินและส่งข้อมูลขึ้นระบบ Google Sheet เรียบร้อยแล้ว!", "success");
-            resetCurrentForm();
-          } else {
-            showModal("ซิงค์สำเร็จ", "ซิงค์รายการประเมินสำเร็จและจัดเก็บในระบบเรียบร้อย", "success");
-          }
-        })
-        .catch(err => {
-          showModal("การซิงค์ล่าช้า/ขัดข้อง", "ไม่สามารถอัปโหลดข้อมูลได้ชั่วคราว: " + err.toString() + " (ข้อมูลยังถูกเก็บอย่างปลอดภัยในเครื่องนี้)", "error");
-        });
-    }
-
-    // Sync all unsynced records
-    function syncAllRecords() {
-      const unsynced = db.records.filter(r => !r.synced);
-      if (unsynced.length === 0) {
-        showModal("ไม่มีงานค้างซิงค์", "ข้อมูลทั้งหมดได้รับการเชื่อมโยงกับ Google Sheets เรียบร้อยแล้ว", "success");
-        return;
-      }
-
-      showModal("กำลังเชื่อมโยงคลาวด์", `กำลังประมวลผลจัดส่งรายการประเมินที่ค้างทั้งหมด (${unsynced.length} รายการ)...`, "info");
-
-      // Sync sequence
-      let promiseChain = Promise.resolve();
-      
-      unsynced.forEach(record => {
-        promiseChain = promiseChain.then(() => {
-          const payload = {
-            date: record.date,
-            ward: "",
-            shift: "",
-            hn: "",
-            patientName: "",
-            evaluator: "",
-            item1: record.items[1] || "",
-            item2: record.items[2] || "",
-            item3: record.items[3] || "",
-            item4: record.items[4] || "",
-            item5: record.items[5] || "",
-            item6: record.items[6] || "",
-            item7: record.items[7] || "",
-            item8: record.items[8] || "",
-            complianceRate: record.complianceRate,
-            remarks: record.remarks
-          };
-
-          return fetch(db.apiUrl, {
-            method: 'POST',
-            mode: 'cors',
-            headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-            body: JSON.stringify(payload)
-          })
-          .then(res => res.json())
-          .then(result => {
-            if (result.status === "success") {
-              record.synced = true;
-            }
-          })
-          .catch(() => { /* skip failures dynamically to try next, keep offline record intact */ });
-        });
-      });
-
-      promiseChain.then(() => {
-        localStorage.setItem('cauti_records', JSON.stringify(db.records));
-        updateUnsyncedBadge();
-        renderHistory();
-        
-        const remaining = db.records.filter(r => !r.synced).length;
-        if (remaining === 0) {
-          showModal("ซิงค์ข้อมูลสำเร็จ", "ประมวลผลข้อมูลส่งตรงขึ้น Google ชีตทั้งหมดเรียบร้อยแล้ว!", "success");
-        } else {
-          showModal("ซิงค์บางส่วนเสร็จสิ้น", `ประมวลผลสำเร็จ เหลือรายการรอตรวจสอบซิงค์ ${remaining} รายการ`, "info");
-        }
-      });
-    }
-
-    // Confirmation logic for single deleting
-    function deleteRecord(recordId) {
-      showConfirmModal(
-        "ยืนยันการลบ?", 
-        "คุณต้องการลบประวัติการประเมินนี้ออกจากฐานข้อมูลในเครื่องนี้ใช่หรือไม่? การลบนี้จะไม่ส่งผลต่อข้อมูลบน Google Sheets คลาวด์",
-        () => {
-          db.records = db.records.filter(r => r.id !== recordId);
-          localStorage.setItem('cauti_records', JSON.stringify(db.records));
-          updateUnsyncedBadge();
-          renderHistory();
-          showModal("ลบข้อมูลสำเร็จ", "ประวัติการประเมินถูกลบออกเรียบร้อยแล้ว", "success");
-        }
-      );
-    }
-
-    // Confirm Clear Local History (Tab 2)
-    function confirmClearHistory() {
-      showConfirmModal(
-        "ล้างประวัติทั้งหมดในเครื่อง?", 
-        "คุณต้องการลบประวัติการประเมินทั้งหมดที่เก็บในเบราว์เซอร์นี้หรือไม่? (ข้อมูลนี้จะไม่ถูกลบออกจาก Google Sheet ของคุณ)",
-        () => {
-          db.records = [];
-          localStorage.setItem('cauti_records', JSON.stringify([]));
-          updateUnsyncedBadge();
-          renderHistory();
-          showModal("รีเซ็ตเรียบร้อย", "ประวัติข้อมูลภายในอุปกรณ์ถูกล้างเรียบร้อยแล้ว", "success");
-        }
-      );
-    }
-
-    // Confirm Clear All Data on Dashboard (Tab 3)
-    function confirmClearAllData() {
-      showConfirmModal(
-        "ล้างฐานข้อมูลและสถิติทั้งหมด?", 
-        "ระบบจะทำการรีเซ็ตประวัติการประเมินและแผนภูมิวิเคราะห์ทั้งหมดให้เป็นค่าว่างเริ่มต้น ต้องการดำเนินการต่อหรือไม่?",
-        () => {
-          db.records = [];
-          localStorage.setItem('cauti_records', JSON.stringify([]));
-          updateUnsyncedBadge();
-          renderHistory();
-          renderReports();
-          showModal("ล้างข้อมูลแล้ว", "ระบบทำความสะอาดฐานข้อมูลเครื่องและกราฟวิเคราะห์เรียบร้อยแล้ว", "success");
-        }
-      );
-    }
-
-    // Generate Mock Data for Dashboard Demonstration
-    function generateDemoData() {
-      showConfirmModal(
-        "สร้างชุดข้อมูลจำลอง?", 
-        "ระบบจะจำลองข้อมูลการประเมินข้างเตียงย้อนหลังเป็นเวลา 7 วัน (จำนวน 15 ครั้งประเมิน) เพื่อให้แผนภูมิแสดงแนวโน้มและการเปรียบเทียบประสิทธิภาพอย่างสมบูรณ์แบบ ชุดข้อมูลนี้จะถูกเก็บไว้ในเครื่องและสามารถกดล้างออกได้ทุกเมื่อ",
-        () => {
-          const generated = [];
-          const now = new Date();
-
-          // Generate 15 records spread across the last 7 days
-          for (let i = 0; i < 15; i++) {
-            const dateOffset = Math.floor(i / 2.2); // Spread across days
-            const targetDate = new Date(now);
-            targetDate.setDate(now.getDate() - dateOffset);
-            const dateStr = targetDate.toISOString().split('T')[0];
-
-            // Randomize compliance item responses (with natural 70-100% compliance rate bias)
-            const items = {};
-            let yesCount = 0;
-            for (let j = 1; j <= 8; j++) {
-              let successChance = 0.85;
-              if (j === 1) successChance = 0.65; 
-              if (j === 2) successChance = 0.70; 
-              if (j === 8) successChance = 0.75; 
-
-              const value = Math.random() < successChance ? "ปฏิบัติ" : "ไม่ปฏิบัติ";
-              items[j] = value;
-              if (value === "ปฏิบัติ") yesCount++;
-            }
-
-            const complianceRate = Math.round((yesCount / 8) * 100);
-
-            generated.push({
-              id: 'MOCK_' + Date.now() + '_' + i + '_' + Math.floor(Math.random() * 100),
-              date: dateStr,
-              items: items,
-              complianceRate: complianceRate,
-              remarks: "ข้อมูลจำลองระดับวิชาชีพเพื่อการทดสอบระบบรายงานผล",
-              timestamp: targetDate.toISOString(),
-              synced: false
-            });
-          }
-
-          // Merge or replace
-          db.records = generated.concat(db.records);
-          localStorage.setItem('cauti_records', JSON.stringify(db.records));
-          
-          updateUnsyncedBadge();
-          renderHistory();
-          renderReports();
-          
-          showModal("สร้างสถิติจำลองสำเร็จ", "สร้างชุดข้อมูลตัวอย่าง 15 รายการเรียบร้อยแล้ว แผนภูมิและสถิติพร้อมใช้งานแล้วครับ!", "success");
-        },
-        false // Not dangerous
-      );
-    }
-
-    // Badge Counters
-    function updateUnsyncedBadge() {
-      const unsyncedCount = db.records.filter(r => !r.synced).length;
-      const syncedCount = db.records.filter(r => r.synced).length;
-
-      const badge = document.getElementById('unsyncedCountBadge');
-      if (unsyncedCount > 0) {
-        badge.innerText = unsyncedCount;
-        badge.classList.remove('hidden');
-      } else {
-        badge.classList.add('hidden');
-      }
-
-      document.getElementById('unsyncedCountTitle').innerText = `${unsyncedCount} รายการ`;
-      document.getElementById('syncedCountTitle').innerText = `${syncedCount} รายการ`;
-    }
-
-    // Render local evaluations in Tab 2 - FIXED PARTIAL STATE COLORING (gray out nulls)
-    function renderHistory() {
-      const body = document.getElementById('historyListBody');
-      const empty = document.getElementById('historyEmptyState');
-
-      if (db.records.length === 0) {
-        body.innerHTML = '';
-        empty.classList.remove('hidden');
-        return;
-      }
-
-      empty.classList.add('hidden');
-      body.innerHTML = db.records.map(record => {
-        const syncBadge = record.synced 
-          ? `<span class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-emerald-50 text-emerald-700 border border-emerald-100">
-               <svg class="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7"></path></svg> ซิงค์แล้ว
-             </span>`
-          : `<span class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-amber-50 text-amber-700 border border-amber-100 animate-pulse">
-               <svg class="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path></svg> รอส่งข้อมูล
-             </span>`;
-
-        let complianceColor = "text-rose-600 bg-rose-50 border-rose-100";
-        if (record.complianceRate === 100) {
-          complianceColor = "text-emerald-700 bg-emerald-50 border-emerald-100";
-        } else if (record.complianceRate >= 80) {
-          complianceColor = "text-teal-700 bg-teal-50 border-teal-100";
-        } else if (record.complianceRate >= 50) {
-          complianceColor = "text-amber-700 bg-amber-50 border-amber-100";
-        }
-
-        const dateParts = record.date.split('-');
-        const thDate = dateParts.length === 3 ? `${dateParts[2]}/${dateParts[1]}/${parseInt(dateParts[0])+543}` : record.date;
-
-        return `
-          <tr class="hover:bg-slate-50 transition-colors">
-            <td class="py-4 px-4 font-semibold text-slate-800">
-              <div>${thDate}</div>
-            </td>
-            <td class="py-4 px-4 text-center">
-              <div class="flex flex-wrap gap-1 max-w-[200px] justify-center mx-auto">
-                ${Object.keys(record.items).map(itemKey => {
-                  const state = record.items[itemKey];
-                  let bgClass = "bg-slate-300"; // Default: grey out if not evaluated (null)
-                  if (state === "ปฏิบัติ") bgClass = "bg-emerald-500";
-                  else if (state === "ไม่ปฏิบัติ") bgClass = "bg-rose-500";
-                  
-                  return `<span class="inline-block w-4 h-4 rounded text-[9px] text-center font-bold text-white shadow-sm leading-4 ${bgClass}" title="ข้อ ${itemKey}: ${state || 'ไม่ได้ประเมิน'}">${itemKey}</span>`;
-                }).join('')}
+    });
+    return { headers: headers, rows: formattedRows };
+  } catch(e) {
+    return { headers: [], rows: [] };
+  }
+}</pre>
+                </div>
               </div>
-            </td>
-            <td class="py-4 px-4 text-center">
-              <span class="inline-block px-2.5 py-1 text-sm font-black border rounded-full ${complianceColor}">
-                ${record.complianceRate}%
-              </span>
-            </td>
-            <td class="py-4 px-4 text-center">${syncBadge}</td>
-            <td class="py-4 px-4 text-center">
-              <div class="flex items-center justify-center space-x-2">
-                ${!record.synced ? `
-                  <button onclick="syncSingleRecord('${record.id}')" class="p-1.5 text-pink-600 hover:bg-pink-50 rounded-lg transition-colors" title="อัปเดตส่งขึ้น Sheets">
-                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 1121.21 8H17"></path></svg>
-                  </button>
-                ` : ''}
-                <button onclick="deleteRecord('${record.id}')" class="p-1.5 text-rose-600 hover:bg-rose-50 rounded-lg transition-colors" title="ลบรายการ">
-                  <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
-                </button>
-              </div>
-            </td>
-          </tr>
-        `;
-      }).join('');
-    }
-
-    // Toggle Filter Type & Visibility in Dashboard tab
-    function setFilterType(type) {
-      currentFilterType = type;
-      
-      // Update filter tabs UI styling (Vibrant Pink theme)
-      document.querySelectorAll('.filter-tab-btn').forEach(btn => {
-        btn.className = "filter-tab-btn px-4 py-2 rounded-lg text-xs font-semibold transition-all text-slate-600 hover:text-slate-800 hover:bg-slate-50";
-      });
-      
-      const activeBtn = document.getElementById(`filter-btn-${type}`);
-      if (activeBtn) {
-        activeBtn.className = "filter-tab-btn px-4 py-2 rounded-lg text-xs font-bold transition-all bg-pink-600 text-white shadow-sm";
-      }
-      
-      // Update sub input panels visibility
-      const subInputs = document.querySelectorAll('.filter-input-sub');
-      subInputs.forEach(el => el.classList.add('hidden'));
-      
-      const targetSubInput = document.getElementById(`filter-input-${type}`);
-      if (targetSubInput) {
-        targetSubInput.classList.remove('hidden');
-      }
-
-      const inputContainer = document.getElementById('filterInputsContainer');
-      if (type === 'all') {
-        inputContainer.classList.add('hidden');
-      } else {
-        inputContainer.classList.remove('hidden');
-      }
-
-      if (type === 'year') {
-        populateYearFilter();
-      }
-
-      renderReports();
-    }
-
-    // Populate Year Filter options dynamically from available records
-    function populateYearFilter() {
-      const select = document.getElementById('filterYearVal');
-      if (!select) return;
-
-      const years = [...new Set(db.records.map(r => r.date.split('-')[0]))].filter(Boolean);
-      
-      // Fallback to current year if no records
-      if (years.length === 0) {
-        years.push(new Date().getFullYear().toString());
-      }
-
-      years.sort((a, b) => b - a); // Descending
-
-      select.innerHTML = years.map(y => {
-        const thaiYear = parseInt(y) + 543;
-        return `<option value="${y}">ปี พ.ศ. ${thaiYear}</option>`;
-      }).join('');
-    }
-
-    // Filter DB records based on current UI filter settings
-    function getFilteredRecords() {
-      let records = [...db.records];
-      
-      if (currentFilterType === 'all') {
-        return records;
-      }
-      
-      if (currentFilterType === 'month') {
-        const selectedMonth = document.getElementById('filterMonthVal').value; // YYYY-MM
-        if (selectedMonth) {
-          records = records.filter(r => r.date.startsWith(selectedMonth));
-        }
-      } else if (currentFilterType === 'year') {
-        const selectedYear = document.getElementById('filterYearVal').value; // YYYY
-        if (selectedYear) {
-          records = records.filter(r => r.date.startsWith(selectedYear));
-        }
-      } else if (currentFilterType === 'range') {
-        const start = document.getElementById('filterStartVal').value; // YYYY-MM-DD
-        const end = document.getElementById('filterEndVal').value; // YYYY-MM-DD
-        if (start) {
-          records = records.filter(r => r.date >= start);
-        }
-        if (end) {
-          records = records.filter(r => r.date <= end);
-        }
-      }
-      
-      return records;
-    }
-
-    // Render Stats Dashboard inside Tab 3 with beautiful interactive Chart.js & Datalabels - ROBUST WITH NULLS & FILTERS
-    function renderReports() {
-      const records = getFilteredRecords();
-      const total = records.length;
-
-      document.getElementById('repTotalEvaluations').innerText = total;
-
-      if (total === 0) {
-        document.getElementById('repFullComplianceCount').innerText = "0";
-        document.getElementById('repFullCompliancePct').innerText = "0% ของประเมินในกลุ่มนี้";
-        document.getElementById('repCriticalImprovement').innerText = "ไม่มีข้อมูลในช่วงเวลานี้";
-        document.getElementById('itemBreakdownContainer').innerHTML = `
-          <div class="text-center py-8 text-slate-400 font-medium">ไม่พบสถิติการตรวจประเมินตามเกณฑ์ช่วงเวลาดังกล่าว</div>
-        `;
-        
-        // Show empty states on canvas cards
-        document.getElementById('chart1EmptyState').classList.remove('hidden');
-        document.getElementById('chart2EmptyState').classList.remove('hidden');
-
-        if (comparisonChartInstance) comparisonChartInstance.destroy();
-        if (trendChartInstance) trendChartInstance.destroy();
-        return;
-      }
-
-      document.getElementById('chart1EmptyState').classList.add('hidden');
-      document.getElementById('chart2EmptyState').classList.add('hidden');
-
-      // 1. Calculate Summary Stats
-      let sum = 0;
-      let fullComplianceCount = 0;
-      records.forEach(r => {
-        sum += r.complianceRate;
-        if (r.complianceRate === 100) {
-          fullComplianceCount++;
-        }
-      });
-      document.getElementById('repFullComplianceCount').innerText = fullComplianceCount;
-      document.getElementById('repFullCompliancePct').innerText = `${Math.round((fullComplianceCount / total) * 100)}% ของรายการประเมินที่กรอง`;
-
-      // 2. Prepare detailed item counts (Separating true No from Null unselected)
-      const itemStats = {
-        1: { yes: 0, no: 0, text: "ประเมินความจำเป็นในการใส่สายสวน" },
-        2: { yes: 0, no: 0, text: "ใช้ hand hygiene เมื่อสัมผัสสายสวน" },
-        3: { yes: 0, no: 0, text: "ให้ระบบปัสสาวะเป็น close system เสมอ" },
-        4: { yes: 0, no: 0, text: "จัดสายสวนให้ปัสสาวะไหลสะดวก ไม่งอพับ" },
-        5: { yes: 0, no: 0, text: "แขวนถุงเก็บต่ำกว่าระดับกระเพาะปัสสาวะ" },
-        6: { yes: 0, no: 0, text: "ไม่เปลี่ยนสายสวนปัสสาวะแบบ Routine" },
-        7: { yes: 0, no: 0, text: "ความสะอาด urethral meatus ด้วย NSS" },
-        8: { yes: 0, no: 0, text: "เทปัสสาวะสะอาด ปลอดภัยด้วย Alcohol 70%" }
-      };
-
-      records.forEach(r => {
-        for (let i = 1; i <= 8; i++) {
-          if (r.items[i] === 'ปฏิบัติ') {
-            itemStats[i].yes++;
-          } else if (r.items[i] === 'ไม่ปฏิบัติ') {
-            itemStats[i].no++;
-          }
-        }
-      });
-
-      // Find critical lowest item based on evaluated ratio (to be accurate with nulls)
-      let lowestRate = 101;
-      let lowestItemText = "ผ่านเกณฑ์ 100% ทุกหัวข้อ";
-
-      let breakdownHtml = "";
-      const comparisonLabels = [];
-      const yesDataPct = [];
-      const noDataPct = [];
-
-      for (let i = 1; i <= 8; i++) {
-        const yesCount = itemStats[i].yes;
-        const noCount = itemStats[i].no;
-        const evaluatedTotal = yesCount + noCount;
-        
-        // Calculate percentages based on actual evaluations, avoiding division by zero
-        const rate = evaluatedTotal > 0 ? Math.round((yesCount / evaluatedTotal) * 100) : 0;
-        const noRate = evaluatedTotal > 0 ? (100 - rate) : 0;
-
-        comparisonLabels.push(`ข้อ ${i}`);
-        yesDataPct.push(rate);
-        noDataPct.push(noRate);
-
-        if (evaluatedTotal > 0 && rate < lowestRate) {
-          lowestRate = rate;
-          lowestItemText = `เกณฑ์ข้อที่ ${i}: ${itemStats[i].text}`;
-        }
-
-        breakdownHtml += `
-          <div class="space-y-1 bg-slate-50 p-3.5 rounded-xl border border-slate-100 hover:border-pink-200 transition-all">
-            <div class="flex justify-between items-center text-xs font-semibold text-slate-700">
-              <span class="truncate pr-4 font-bold text-slate-800">ข้อที่ ${i}: ${itemStats[i].text}</span>
-              <span class="font-black text-pink-700">${rate}% ปฏิบัติ (${yesCount}/${evaluatedTotal} ครั้งประเมิน)</span>
             </div>
-            <div class="w-full bg-slate-200 rounded-full h-3 overflow-hidden flex shadow-inner">
-              <div class="bg-pink-500 h-full rounded-l transition-all" style="width: ${rate}%" title="ปฏิบัติ: ${rate}%"></div>
-              <div class="bg-slate-400 h-full rounded-r transition-all" style="width: ${noRate}%" title="ไม่ปฏิบัติ: ${noRate}%"></div>
-            </div>
-            <div class="flex justify-between text-[10px] text-slate-400 font-medium">
-              <span>ปฏิบัติ: ${rate}% (${yesCount} ครั้ง)</span>
-              <span>ไม่ปฏิบัติ: ${noRate}% (${noCount} ครั้ง)</span>
-            </div>
+
           </div>
-        `;
-      }
+        </div>
 
-      document.getElementById('repCriticalImprovement').innerText = `${lowestItemText} (${lowestRate}%)`;
-      document.getElementById('itemBreakdownContainer').innerHTML = breakdownHtml;
+      </div>
+    </div>
+  </div>
 
-      // 3. Render CHART 1: Comparison Bar Chart (Vibrant Pink Theme with Values Embedded)
-      const ctxComparison = document.getElementById('comparisonChartCanvas').getContext('2d');
-      if (comparisonChartInstance) {
-        comparisonChartInstance.destroy();
-      }
+  <script>
+    // --- ตรวจเช็คการทำงานภายใต้สภาพแวดล้อม Google Apps Script ---
+    const isGoogleAppsScript = (typeof google !== 'undefined' && google.script && google.script.run);
+    
+    // ชุดข้อมูลจำลองตั้งต้นแบบอัพเกรด (Mock Data)
+    const defaultMockData = [
+      { id: "1", evalDate: "2025-10-15", q1: "ปฏิบัติ", q1_note: "ประเมินเช้าแล้ว", q2: "ปฏิบัติ", q2_note: "", q3: "ปฏิบัติ", q3_note: "", q4: "ปฏิบัติ", q4_note: "สายปกติ", q5: "ไม่ปฏิบัติ", q5_note: "พบถุงสัมผัสพื้น รีบแขวนใหม่", q6: "ปฏิบัติ", q6_note: "", q7: "ปฏิบัติ", q7_note: "NSS เช็ดสะอาด", q8: "ปฏิบัติ", q8_note: "" },
+      { id: "2", evalDate: "2025-11-16", q1: "ปฏิบัติ", q1_note: "", q2: "ปฏิบัติ", q2_note: "", q3: "ปฏิบัติ", q3_note: "ตรวจเช็คข้อต่อสมบูรณ์", q4: "ไม่ปฏิบัติ", q4_note: "พับงอเล็กน้อย ได้แก้ไข", q5: "ปฏิบัติ", q5_note: "", q6: "ไม่ปฏิบัติ", q6_note: "มีการเปลี่ยนผิดเวร", q7: "ปฏิบัติ", q7_note: "", q8: "ปฏิบัติ", q8_note: "" },
+      { id: "3", evalDate: "2025-12-17", q1: "ปฏิบัติ", q1_note: "", q2: "ปฏิบัติ", q2_note: "ล้างมือก่อนทำ", q3: "ปฏิบัติ", q3_note: "", q4: "ปฏิบัติ", q4_note: "", q5: "ปฏิบัติ", q5_note: "", q6: "ปฏิบัติ", q6_note: "", q7: "ปฏิบัติ", q7_note: "", q8: "ปฏิบัติ", q8_note: "" },
+      { id: "4", evalDate: "2026-03-18", q1: "ปฏิบัติ", q1_note: "", q2: "ปฏิบัติ", q2_note: "", q3: "ปฏิบัติ", q3_note: "", q4: "ปฏิบัติ", q4_note: "", q5: "ปฏิบัติ", q5_note: "", q6: "ปฏิบัติ", q6_note: "", q7: "ปฏิบัติ", q7_note: "", q8: "ปฏิบัติ", q8_note: "" },
+      { id: "5", evalDate: "2026-04-19", q1: "ปฏิบัติ", q1_note: "", q2: "ปฏิบัติ", q2_note: "", q3: "ปฏิบัติ", q3_note: "", q4: "N/A", q4_note: "ผู้ป่วยไม่มีสายสวนเวรนี้", q5: "ปฏิบัติ", q5_note: "", q6: "ปฏิบัติ", q6_note: "", q7: "ปฏิบัติ", q7_note: "", q8: "ปฏิบัติ", q8_note: "" },
+      { id: "6", evalDate: "2026-05-20", q1: "ปฏิบัติ", q1_note: "", q2: "ปฏิบัติ", q2_note: "", q3: "ปฏิบัติ", q3_note: "", q4: "ปฏิบัติ", q4_note: "", q5: "ปฏิบัติ", q5_note: "", q6: "ปฏิบัติ", q6_note: "", q7: "ปฏิบัติ", q7_note: "", q8: "ปฏิบัติ", q8_note: "" }
+    ];
+
+    let cachedRecords = [];
+    let barChart = null;
+    let trendChart = null;
+    let filterMode = 'all'; // 'all', 'year', 'month', 'range'
+
+    // รันเมื่อโหลดหน้าเว็บบูตสแตรปเสร็จสิ้น
+    window.addEventListener('DOMContentLoaded', () => {
+      document.getElementById('evalDate').value = new Date().toISOString().split('T')[0];
       
-      comparisonChartInstance = new Chart(ctxComparison, {
+      const badge = document.getElementById('connectionBadge');
+      if (isGoogleAppsScript) {
+        badge.innerHTML = '<i class="fa-solid fa-cloud text-emerald-300 animate-bounce"></i> เชื่อมต่อ Google Sheet เรียบร้อย';
+        badge.className = "flex items-center gap-2 bg-emerald-950/40 text-emerald-200 py-2.5 px-4 rounded-2xl border border-emerald-500/30 text-xs font-bold";
+        loadRealData();
+      } else {
+        badge.innerHTML = '<i class="fa-solid fa-desktop text-amber-300 animate-pulse"></i> โหมดพรีวิว (จำลองสถิติ)';
+        badge.className = "flex items-center gap-2 bg-amber-950/40 text-amber-200 py-2.5 px-4 rounded-2xl border border-amber-500/30 text-xs font-bold";
+        document.getElementById('btnResetDatabase').classList.remove('hidden');
+        
+        // ดึงข้อมูลทดสอบจาก LocalStorage
+        const stored = localStorage.getItem('cauti_mock_records');
+        if (stored) {
+          cachedRecords = JSON.parse(stored);
+        } else {
+          cachedRecords = [...defaultMockData];
+          localStorage.setItem('cauti_mock_records', JSON.stringify(cachedRecords));
+        }
+        updateDashboard();
+      }
+    });
+
+    // แสดง/ซ่อน Loading overlay
+    function setLoader(show, text = "กำลังเชื่อมต่อคลาวด์...") {
+      const loader = document.getElementById('loadingOverlay');
+      document.getElementById('loadingText').innerText = text;
+      if (show) {
+        loader.classList.remove('hidden');
+      } else {
+        loader.classList.add('hidden');
+      }
+    }
+
+    // ล้างฟอร์ม (รีเซ็ตตัวเลือกและข้อมูลรายละเอียด โดยคง "ปฏิบัติ" และ "วันที่ปัจจุบัน" ไว้)
+    function clearForm() {
+      document.getElementById('cautiForm').reset();
+      document.getElementById('evalDate').value = new Date().toISOString().split('T')[0];
+      
+      // บังคับให้ตรวจสอบว่า 'ปฏิบัติ' ถูกเลือกใหม่ทั้งหมด
+      for(let i=1; i<=8; i++) {
+        const radios = document.getElementsByName(`q${i}`);
+        radios.forEach(radio => {
+          if(radio.value === "ปฏิบัติ") radio.checked = true;
+        });
+        const note = document.getElementById(`q${i}_note`);
+        if(note) note.value = "";
+      }
+    }
+
+    // ฟังก์ชันจัดการแท็บรายงาน
+    function changeDashboardTab(tabName) {
+      const tabs = {
+        'bar': { btn: 'tabBtnBar', panel: 'panelBar' },
+        'trend': { btn: 'tabBtnTrend', panel: 'panelTrend' },
+        'history': { btn: 'tabBtnHistory', panel: 'panelHistory' },
+        'setting': { btn: 'tabBtnSetting', panel: 'panelSetting' }
+      };
+
+      Object.keys(tabs).forEach(key => {
+        const item = tabs[key];
+        const btn = document.getElementById(item.btn);
+        const panel = document.getElementById(item.panel);
+
+        if (key === tabName) {
+          btn.className = "px-4 py-2 rounded-xl text-xs font-bold bg-teal-600 text-white transition-all cursor-pointer shadow-md";
+          panel.classList.remove('hidden');
+        } else {
+          if (key === 'setting') {
+            btn.className = "px-4 py-2 rounded-xl text-xs font-bold bg-indigo-50 text-indigo-600 hover:bg-indigo-100 transition-all cursor-pointer";
+          } else {
+            btn.className = "px-4 py-2 rounded-xl text-xs font-bold bg-slate-100 text-slate-600 hover:bg-slate-200 transition-all cursor-pointer";
+          }
+          panel.classList.add('hidden');
+        }
+      });
+    }
+
+    // ก๊อบปี้โค้ด Code.gs ไปหน้าคลิปบอร์ด
+    function copyAppsScriptCode() {
+      const codeText = document.getElementById('gasCodeText').innerText;
+      const tempTextArea = document.createElement("textarea");
+      tempTextArea.value = codeText;
+      document.body.appendChild(tempTextArea);
+      tempTextArea.select();
+      
+      try {
+        document.execCommand('copy');
+        showCustomAlert("คัดลอกรหัสสำเร็จ!", "คุณสามารถนำรหัส Code.gs ไปวางใน Apps Script เพื่อเชื่อมต่อกับตาราง Google Sheet ของคุณได้ทันที", "fa-solid fa-clipboard-check text-indigo-500 bg-indigo-100");
+      } catch (err) {
+        showCustomAlert("ขออภัย", "ไม่สามารถคัดลอกได้อัตโนมัติ กรุณาคลุมดำเพื่อคัดลอกด้วยตนเอง", "fa-solid fa-triangle-exclamation text-amber-500 bg-amber-100");
+      }
+      document.body.removeChild(tempTextArea);
+    }
+
+    // หน้าต่างแจ้งเตือน Alert
+    function showCustomAlert(title, message, iconClassAndBg = "fa-solid fa-circle-check text-emerald-500 bg-emerald-100") {
+      const modal = document.getElementById('customAlert');
+      const iconContainer = document.getElementById('alertIconContainer');
+      const icon = document.getElementById('alertIcon');
+      
+      document.getElementById('alertTitle').innerText = title;
+      document.getElementById('alertMessage').innerHTML = message;
+      
+      iconContainer.className = `flex items-center justify-center w-16 h-16 rounded-full mx-auto mb-4 ${iconClassAndBg.split(' ').slice(1).join(' ')}`;
+      icon.className = iconClassAndBg.split(' ')[0];
+      
+      modal.classList.remove('hidden');
+    }
+
+    function closeAlert() {
+      document.getElementById('customAlert').classList.add('hidden');
+    }
+
+    // ส่งแบบฟอร์มข้อมูลประเมิน (ส่งข้อมูลผลลัพธ์และช่องกรอกรายละเอียดรายละเอียดทั้ง 8 ข้อ)
+    function handleFormSubmit(e) {
+      e.preventDefault();
+
+      const formData = {
+        evalDate: document.getElementById('evalDate').value,
+        q1: document.querySelector('input[name="q1"]:checked').value,
+        q1_note: document.getElementById('q1_note').value,
+        q2: document.querySelector('input[name="q2"]:checked').value,
+        q2_note: document.getElementById('q2_note').value,
+        q3: document.querySelector('input[name="q3"]:checked').value,
+        q3_note: document.getElementById('q3_note').value,
+        q4: document.querySelector('input[name="q4"]:checked').value,
+        q4_note: document.getElementById('q4_note').value,
+        q5: document.querySelector('input[name="q5"]:checked').value,
+        q5_note: document.getElementById('q5_note').value,
+        q6: document.querySelector('input[name="q6"]:checked').value,
+        q6_note: document.getElementById('q6_note').value,
+        q7: document.querySelector('input[name="q7"]:checked').value,
+        q7_note: document.getElementById('q7_note').value,
+        q8: document.querySelector('input[name="q8"]:checked').value,
+        q8_note: document.getElementById('q8_note').value
+      };
+
+      setLoader(true, "กำลังส่งข้อมูลบันทึกลงชีต...");
+
+      if (isGoogleAppsScript) {
+        google.script.run
+          .withSuccessHandler(function(response) {
+            setLoader(false);
+            showCustomAlert("บันทึกสำเร็จ", "ข้อมูลการประเมินลงตาราง Google Sheet เรียบร้อยและอัปเดตสถิติทันที", "fa-solid fa-circle-check text-emerald-500 bg-emerald-100");
+            clearForm();
+            loadRealData();
+          })
+          .withFailureHandler(function(err) {
+            setLoader(false);
+            showCustomAlert(
+              "การเชื่อมต่อติดขัด", 
+              `เกิดข้อผิดพลาด: ${err.message}<br><br><span class='text-xs text-rose-600 font-bold'>คำแนะนำ: หากพบบัญชีสิทธิ์ขัดข้อง กรุณาลองใช้หน้าต่างไม่ระบุตัวตน (Incognito) หรือตรวจสอบสิทธิ์ของท่านในชีตปลายทาง</span>`, 
+              "fa-solid fa-circle-xmark text-rose-500 bg-rose-100"
+            );
+          })
+          .saveData(formData);
+      } else {
+        setTimeout(() => {
+          setLoader(false);
+          formData.id = Date.now().toString();
+          cachedRecords.unshift(formData);
+          localStorage.setItem('cauti_mock_records', JSON.stringify(cachedRecords));
+          
+          showCustomAlert("บันทึกจำลองสำเร็จ", "บันทึกในอุปกรณ์ปัจจุบันเรียบร้อย สามารถสลับไปดูสถิติและวิเคราะห์แนวโน้มได้แล้ว!", "fa-solid fa-circle-check text-emerald-500 bg-emerald-100");
+          clearForm();
+          updateDashboard();
+        }, 800);
+      }
+    }
+
+    // ดึงข้อมูลจริงจากชีตของ Google Sheets
+    function loadRealData() {
+      setLoader(true, "กำลังดึงข้อมูลล่าสุดจาก Google Sheet...");
+      
+      if (isGoogleAppsScript) {
+        google.script.run
+          .withSuccessHandler(function(data) {
+            setLoader(false);
+            if (!data || !data.rows || data.rows.length === 0) {
+              cachedRecords = [];
+            } else {
+              cachedRecords = data.rows.map((row, index) => {
+                return {
+                  id: index.toString(),
+                  evalDate: row[1] || "",
+                  q1: row[2] || "ปฏิบัติ", q1_note: row[3] || "",
+                  q2: row[4] || "ปฏิบัติ", q2_note: row[5] || "",
+                  q3: row[6] || "ปฏิบัติ", q3_note: row[7] || "",
+                  q4: row[8] || "ปฏิบัติ", q4_note: row[9] || "",
+                  q5: row[10] || "ปฏิบัติ", q5_note: row[11] || "",
+                  q6: row[12] || "ปฏิบัติ", q6_note: row[13] || "",
+                  q7: row[14] || "ปฏิบัติ", q7_note: row[15] || "",
+                  q8: row[16] || "ปฏิบัติ", q8_note: row[17] || ""
+                };
+              });
+            }
+            updateDashboard();
+          })
+          .withFailureHandler(function(err) {
+            setLoader(false);
+            showCustomAlert("ดึงข้อมูลไม่สำเร็จ", "ไม่สามารถอ่านตารางได้ กรุณาตรวจเช็คสิทธิ์ในชีตตารางพุนพินของคุณ", "fa-solid fa-circle-xmark text-rose-500 bg-rose-100");
+          })
+          .getData();
+      } else {
+        setTimeout(() => {
+          setLoader(false);
+          updateDashboard();
+        }, 500);
+      }
+    }
+
+    // ล้างบันทึก Local Mock ทั้งหมด
+    function confirmResetAll() {
+      if (confirm("คุณแน่ใจหรือไม่ว่าต้องการล้างข้อมูลบันทึกทั้งหมดบนเครื่องอุปกรณ์พรีวิวนี้? (ข้อมูลในชีตจะไม่ถูกลบหากติดตั้งผ่าน Apps Script แล้ว)")) {
+        cachedRecords = [];
+        localStorage.setItem('cauti_mock_records', JSON.stringify([]));
+        updateDashboard();
+        showCustomAlert("ล้างข้อมูลเรียบร้อย", "ประวัติข้อมูลจำลองบนเครื่องของคุณถูกเคลียร์ออกเรียบร้อย", "fa-solid fa-circle-check text-emerald-500 bg-emerald-100");
+      }
+    }
+
+    // ลบรายการประเมิน
+    function deleteRecord(id) {
+      if (confirm("ลบข้อมูลประเมินรายการนี้ใช่หรือไม่?")) {
+        if (isGoogleAppsScript) {
+          showCustomAlert("คำแนะนำความปลอดภัย", "เพื่อความปลอดภัยและความถูกต้องทางสถิติการรักษาความปลอดภัยของข้อมูล กรุณาเข้าไปลบแถวที่ผิดพลาดโดยตรงในไฟล์ Google Sheet เสมอครับ", "fa-solid fa-circle-info text-sky-500 bg-sky-100");
+        } else {
+          cachedRecords = cachedRecords.filter(r => r.id !== id);
+          localStorage.setItem('cauti_mock_records', JSON.stringify(cachedRecords));
+          updateDashboard();
+        }
+      }
+    }
+
+    // ค้นหาในประวัติประเมินแบบทันที
+    function filterHistoryTable() {
+      const query = document.getElementById('historySearch').value.toLowerCase();
+      const rows = document.querySelectorAll('#historyTableBody tr');
+      
+      rows.forEach(row => {
+        const dateText = row.cells[0].innerText.toLowerCase();
+        if (dateText.includes(query)) {
+          row.style.display = '';
+        } else {
+          row.style.display = 'none';
+        }
+      });
+    }
+
+    // --- ฟังก์ชันเกี่ยวกับการกรองข้อมูลรายงาน (Filtering Logic) ---
+    function setFilterMode(mode) {
+      filterMode = mode;
+      
+      // อัปเดตสถานะปุ่ม Active
+      const modes = ['all', 'year', 'month', 'range'];
+      modes.forEach(m => {
+        const btn = document.getElementById(`filterMode${m.charAt(0).toUpperCase() + m.slice(1)}`);
+        if (m === mode) {
+          btn.className = "px-3 py-1.5 rounded-xl transition-all bg-white text-teal-700 shadow-sm cursor-pointer";
+        } else {
+          btn.className = "px-3 py-1.5 rounded-xl transition-all text-slate-600 hover:text-slate-900 cursor-pointer";
+        }
+      });
+
+      // จัดการแสดงผล Input แต่ละแบบ
+      const container = document.getElementById('filterInputsArea');
+      const yearGrp = document.getElementById('filterYearGroup');
+      const monthGrp = document.getElementById('filterMonthGroup');
+      const rangeGrp = document.getElementById('filterRangeGroup');
+
+      if (mode === 'all') {
+        container.classList.add('hidden');
+      } else {
+        container.classList.remove('hidden');
+        yearGrp.classList.add('hidden');
+        monthGrp.classList.add('hidden');
+        rangeGrp.classList.add('hidden');
+
+        if (mode === 'year') {
+          yearGrp.classList.remove('hidden');
+          buildYearSelectOptions();
+        } else if (mode === 'month') {
+          monthGrp.classList.remove('hidden');
+          if (!document.getElementById('filterMonthInput').value) {
+            const today = new Date();
+            document.getElementById('filterMonthInput').value = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}`;
+          }
+        } else if (mode === 'range') {
+          rangeGrp.classList.remove('hidden');
+          if (!document.getElementById('filterStartDate').value) {
+            const today = new Date();
+            const y = today.getFullYear();
+            const m = today.getMonth();
+            document.getElementById('filterStartDate').value = new Date(y, m, 1).toISOString().split('T')[0];
+            document.getElementById('filterEndDate').value = new Date(y, m + 1, 0).toISOString().split('T')[0];
+          }
+        }
+      }
+      applyFilters();
+    }
+
+    // ฟังก์ชันสร้างตัวเลือกปี ค.ศ./พ.ศ. จากข้อมูลประเมินทั้งหมด
+    function buildYearSelectOptions() {
+      const select = document.getElementById('filterYearSelect');
+      select.innerHTML = '';
+
+      let years = [...new Set(cachedRecords.map(r => {
+        if (!r.evalDate) return null;
+        return new Date(r.evalDate).getFullYear();
+      }).filter(Boolean))];
+
+      if (years.length === 0) {
+        years = [new Date().getFullYear()];
+      }
+
+      years.sort((a, b) => b - a);
+
+      years.forEach(y => {
+        const option = document.createElement('option');
+        option.value = y;
+        option.innerText = `ปี ค.ศ. ${y} (พ.ศ. ${y + 543})`;
+        select.appendChild(option);
+      });
+    }
+
+    // ฟังก์ชันประมวลผลการกรอง
+    function applyFilters() {
+      let filtered = [...cachedRecords];
+
+      if (filterMode === 'year') {
+        const selectedYear = parseInt(document.getElementById('filterYearSelect').value);
+        if (selectedYear) {
+          filtered = filtered.filter(r => {
+            return r.evalDate && new Date(r.evalDate).getFullYear() === selectedYear;
+          });
+        }
+      } else if (filterMode === 'month') {
+        const selectedMonth = document.getElementById('filterMonthInput').value; // รูปแบบ "YYYY-MM"
+        if (selectedMonth) {
+          filtered = filtered.filter(r => {
+            return r.evalDate && r.evalDate.substring(0, 7) === selectedMonth;
+          });
+        }
+      } else if (filterMode === 'range') {
+        const start = document.getElementById('filterStartDate').value;
+        const end = document.getElementById('filterEndDate').value;
+        if (start && end) {
+          const startDate = new Date(start);
+          startDate.setHours(0,0,0,0);
+          const endDate = new Date(end);
+          endDate.setHours(23,59,59,999);
+
+          filtered = filtered.filter(r => {
+            if (!r.evalDate) return false;
+            const recordDate = new Date(r.evalDate);
+            return recordDate >= startDate && recordDate <= endDate;
+          });
+        }
+      }
+
+      renderDashboardWithData(filtered);
+    }
+
+    // สรุปข้อมูลหลักและนำขึ้นหน้า Dashboard
+    function updateDashboard() {
+      applyFilters();
+    }
+
+    // เรนเดอร์ Dashboard ด้วยข้อมูลที่ผ่านการกรอง (Filtered Data) เรียบร้อยแล้ว
+    function renderDashboardWithData(dataList) {
+      const totalCount = dataList.length;
+      document.getElementById('statTotal').innerText = `${totalCount} ใบ`;
+
+      if (totalCount === 0) {
+        document.getElementById('noDataAlert').classList.remove('hidden');
+        document.getElementById('historyTableBody').innerHTML = '';
+        renderBarChart(Array(8).fill(0), Array(8).fill(0));
+        renderTrendChart([], []);
+        return;
+      }
+
+      document.getElementById('noDataAlert').classList.add('hidden');
+
+      // 1. สัดส่วนผลการปฏิบัติงานรายข้อ (N/A จะถูกคัดแยกออกจากตัวหารเพื่อสถิติที่มีคุณภาพสูงสุด)
+      let countDone = Array(8).fill(0);
+      let countEvaluable = Array(8).fill(0); // ตัวหารที่คัดแยก N/A ออกไปแล้ว
+
+      dataList.forEach(rec => {
+        for (let i = 1; i <= 8; i++) {
+          const answer = rec[`q${i}`];
+          if (answer === "ปฏิบัติ" || answer === "ปฎิบัติ") {
+            countDone[i - 1]++;
+            countEvaluable[i - 1]++;
+          } else if (answer === "ไม่ปฏิบัติ") {
+            countEvaluable[i - 1]++;
+          }
+        }
+      });
+
+      // แปลงค่าสถิติเป็น %
+      const pctDone = countDone.map((done, index) => {
+        const total = countEvaluable[index];
+        return total > 0 ? Math.round((done / total) * 100) : 0;
+      });
+      const pctNotDone = pctDone.map((pct, idx) => {
+        return countEvaluable[idx] > 0 ? (100 - pct) : 0;
+      });
+
+      renderBarChart(pctDone, pctNotDone);
+
+      // 2. ข้อมูลแสดงแนวโน้มตามวันเวลา (Trend Chart - คิดสัดส่วนปฏิบัติจริงเฉลี่ยรวมในแต่ละวันแบบไม่รวม N/A)
+      const trendDataMap = {};
+      dataList.forEach(rec => {
+        const dateKey = rec.evalDate || "ไม่ระบุวัน";
+        if (!trendDataMap[dateKey]) {
+          trendDataMap[dateKey] = { totalQuestions: 0, doneQuestions: 0 };
+        }
+        for (let i = 1; i <= 8; i++) {
+          const ans = rec[`q${i}`];
+          if (ans === "ปฏิบัติ" || ans === "ปฎิบัติ") {
+            trendDataMap[dateKey].totalQuestions++;
+            trendDataMap[dateKey].doneQuestions++;
+          } else if (ans === "ไม่ปฏิบัติ") {
+            trendDataMap[dateKey].totalQuestions++;
+          }
+        }
+      });
+
+      const sortedDates = Object.keys(trendDataMap).sort((a, b) => new Date(a) - new Date(b));
+      const trendPercentages = sortedDates.map(date => {
+        const d = trendDataMap[date];
+        return d.totalQuestions > 0 ? Math.round((d.doneQuestions / d.totalQuestions) * 100) : 0;
+      });
+
+      renderTrendChart(sortedDates, trendPercentages);
+
+      // 3. ตารางประวัติประเมินตามตัวกรอง
+      const tableBody = document.getElementById('historyTableBody');
+      tableBody.innerHTML = '';
+      
+      dataList.forEach(rec => {
+        let doneInCase = 0;
+        let evaluableInCase = 0;
+        for (let i = 1; i <= 8; i++) {
+          const ans = rec[`q${i}`];
+          if (ans === "ปฏิบัติ" || ans === "ปฎิบัติ") {
+            doneInCase++;
+            evaluableInCase++;
+          } else if (ans === "ไม่ปฏิบัติ") {
+            evaluableInCase++;
+          }
+        }
+        const casePercentage = evaluableInCase > 0 ? Math.round((doneInCase / evaluableInCase) * 100) : 0;
+        
+        const tr = document.createElement('tr');
+        tr.className = "hover:bg-slate-50/80 transition-colors";
+        tr.innerHTML = `
+          <td class="p-3 font-semibold text-slate-700">${rec.evalDate}</td>
+          <td class="p-3 text-center font-bold text-slate-600">${doneInCase} / ${evaluableInCase} <span class="text-[10px] text-slate-400 font-normal">(N/A: ${8 - evaluableInCase})</span></td>
+          <td class="p-3 text-center font-extrabold ${casePercentage >= 80 ? 'text-emerald-600' : 'text-amber-600'}">${casePercentage}%</td>
+          <td class="p-3 text-right">
+            <button onclick="deleteRecord('${rec.id}')" class="text-rose-500 hover:text-rose-700 font-bold p-1 hover:bg-rose-50 rounded transition-all cursor-pointer">
+              <i class="fa-regular fa-trash-can text-sm"></i>
+            </button>
+          </td>
+        `;
+        tableBody.appendChild(tr);
+      });
+    }
+
+    function renderBarChart(doneData, notDoneData) {
+      const ctx = document.getElementById('cautiBarChart').getContext('2d');
+      if (barChart) barChart.destroy();
+
+      barChart = new Chart(ctx, {
         type: 'bar',
-        plugins: [ChartDataLabels], // Locally register ChartDataLabels to prevent bleeding on line chart
         data: {
-          labels: comparisonLabels,
+          labels: ['ข้อ 1', 'ข้อ 2', 'ข้อ 3', 'ข้อ 4', 'ข้อ 5', 'ข้อ 6', 'ข้อ 7', 'ข้อ 8'],
           datasets: [
             {
               label: 'ปฏิบัติ (%)',
-              data: yesDataPct,
-              backgroundColor: 'rgba(219, 39, 119, 0.85)', // Tailwind pink-600
-              borderColor: 'rgba(219, 39, 119, 1)',
+              data: doneData,
+              backgroundColor: 'rgba(20, 184, 166, 0.85)',
+              borderColor: 'rgb(20, 184, 166)',
               borderWidth: 1.5,
-              borderRadius: 6
+              borderRadius: 8,
+              borderSkipped: false,
             },
             {
               label: 'ไม่ปฏิบัติ (%)',
-              data: noDataPct,
-              backgroundColor: 'rgba(244, 63, 94, 0.35)', // Soft Rose (Light fail indicators)
-              borderColor: 'rgba(244, 63, 94, 0.9)',
+              data: notDoneData,
+              backgroundColor: 'rgba(244, 63, 94, 0.85)',
+              borderColor: 'rgb(244, 63, 94)',
               borderWidth: 1.5,
-              borderRadius: 6
+              borderRadius: 8,
+              borderSkipped: false,
             }
           ]
         },
@@ -1642,95 +1161,51 @@ function calculateLiveScore() {
             y: {
               beginAtZero: true,
               max: 100,
+              grid: { color: 'rgba(226, 232, 240, 0.6)' },
               ticks: {
-                callback: function(value) { return value + '%'; },
-                font: { family: 'Prompt', size: 11 }
+                font: { family: 'Sarabun', weight: 'bold' },
+                callback: function(value) { return value + "%" }
               }
             },
             x: {
-              ticks: {
-                font: { family: 'Prompt', size: 11, weight: 'bold' }
-              }
+              grid: { display: false },
+              ticks: { font: { family: 'Sarabun', weight: 'bold' } }
             }
           },
           plugins: {
             legend: {
               position: 'bottom',
-              labels: { font: { family: 'Prompt', size: 11 } }
-            },
-            tooltip: {
-              titleFont: { family: 'Prompt', size: 12 },
-              bodyFont: { family: 'Prompt', size: 11 },
-              callbacks: {
-                label: function(context) {
-                  return ` ${context.dataset.label}: ${context.raw}%`;
-                }
-              }
-            },
-            datalabels: {
-              display: true,
-              color: '#ffffff',
-              anchor: 'center', 
-              align: 'center',
-              textShadowColor: 'rgba(0, 0, 0, 0.3)',
-              textShadowBlur: 4,
-              font: {
-                family: 'Prompt',
-                weight: 'bold',
-                size: 10
-              },
-              formatter: function(value) {
-                return value > 0 ? value + '%' : ''; // Don't render text if the percentage is 0
-              }
+              labels: { font: { family: 'Sarabun', size: 11, weight: 'bold' }, boxWidth: 12, padding: 15 }
             }
           }
         }
       });
+    }
 
-      // 4. Render CHART 2: Compliance Trend Line Chart (Vibrant Pink Line Series)
-      const trendDataMap = {};
-      records.forEach(r => {
-        if (!trendDataMap[r.date]) {
-          trendDataMap[r.date] = { sum: 0, count: 0 };
-        }
-        trendDataMap[r.date].sum += r.complianceRate;
-        trendDataMap[r.date].count++;
-      });
+    function renderTrendChart(dates, scores) {
+      const ctx = document.getElementById('cautiTrendChart').getContext('2d');
+      if (trendChart) trendChart.destroy();
 
-      // Sort dates chronologically
-      const sortedDates = Object.keys(trendDataMap).sort();
-      const trendLabels = [];
-      const trendDataValues = [];
+      const gradient = ctx.createLinearGradient(0, 0, 0, 300);
+      gradient.addColorStop(0, 'rgba(99, 102, 241, 0.35)');
+      gradient.addColorStop(1, 'rgba(99, 102, 241, 0.01)');
 
-      sortedDates.forEach(date => {
-        const parts = date.split('-');
-        const formattedDate = parts.length === 3 ? `${parts[2]}/${parts[1]}/${parseInt(parts[0])+543 - 2500}` : date; // พ.ศ. สั้น 
-        trendLabels.push(formattedDate);
-        trendDataValues.push(Math.round(trendDataMap[date].sum / trendDataMap[date].count));
-      });
-
-      const ctxTrend = document.getElementById('trendChartCanvas').getContext('2d');
-      if (trendChartInstance) {
-        trendChartInstance.destroy();
-      }
-
-      trendChartInstance = new Chart(ctxTrend, {
+      trendChart = new Chart(ctx, {
         type: 'line',
         data: {
-          labels: trendLabels,
+          labels: dates,
           datasets: [{
-            label: 'ร้อยละการปฏิบัติตามมาตรฐานเฉลี่ย',
-            data: trendDataValues,
+            label: 'สัดส่วนการปฏิบัติผ่านเกณฑ์เฉลี่ยรายวันแบบคัดแยก N/A (%)',
+            data: scores,
             fill: true,
-            backgroundColor: 'rgba(219, 39, 119, 0.12)', // Subtle light pink fill
-            borderColor: 'rgba(219, 39, 119, 1)', // Hot pink stroke
+            backgroundColor: gradient,
+            borderColor: '#6366f1',
             borderWidth: 3,
             tension: 0.35,
-            pointBackgroundColor: 'rgba(190, 24, 93, 1)', // Deeper pink points
+            pointBackgroundColor: '#4f46e5',
             pointBorderColor: '#ffffff',
             pointBorderWidth: 2,
-            pointRadius: 5,
-            pointHoverRadius: 7
+            pointRadius: 6
           }]
         },
         options: {
@@ -1740,39 +1215,26 @@ function calculateLiveScore() {
             y: {
               beginAtZero: true,
               max: 100,
+              grid: { color: 'rgba(226, 232, 240, 0.6)' },
               ticks: {
-                callback: function(value) { return value + '%'; },
-                font: { family: 'Prompt', size: 11 }
+                font: { family: 'Sarabun', weight: 'bold' },
+                callback: function(value) { return value + "%" }
               }
             },
             x: {
-              ticks: {
-                font: { family: 'Prompt', size: 10 }
-              }
+              grid: { color: 'rgba(226, 232, 240, 0.6)' },
+              ticks: { font: { family: 'Sarabun', weight: 'bold' } }
             }
           },
           plugins: {
             legend: {
               position: 'bottom',
-              labels: { font: { family: 'Prompt', size: 11 } }
-            },
-            tooltip: {
-              titleFont: { family: 'Prompt', size: 12 },
-              bodyFont: { family: 'Prompt', size: 11 },
-              callbacks: {
-                label: function(context) {
-                  return ` ความสอดคล้องเฉลี่ย: ${context.raw}%`;
-                }
-              }
-            },
-            datalabels: {
-              display: false // Turn off datalabels for trendline chart to keep it clean
+              labels: { font: { family: 'Sarabun', size: 11, weight: 'bold' }, boxWidth: 12 }
             }
           }
         }
       });
     }
-
   </script>
 </body>
 </html>
